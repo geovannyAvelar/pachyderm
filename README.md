@@ -117,3 +117,7 @@ cd gui
 go build ./...   # the gui module has its own go.mod, pointed at the root module via a replace directive
 go test ./...
 ```
+
+## License
+
+[MIT](LICENSE)
