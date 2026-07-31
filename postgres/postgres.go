@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,25 +10,25 @@ import (
 	"strings"
 )
 
+//go:embed versions.json
+var embeddedVersions []byte
+
 type Version struct {
 	Version      string `json:"version"`
 	CurrentMinor string `json:"current_minor"`
 	Supported    bool   `json:"supported"`
 }
 
-func (v Version) GetUrl() string {
-	if v.Supported {
-		return fmt.Sprintf("https://get.enterprisedb.com/postgresql/postgresql-%s-1-windows-x64-binaries.zip", v.Version)
-	}
-
-	return ""
-}
-
-func GetVersions(url string) ([]Version, error) {
+// GetVersions returns the PostgreSQL major-version catalog. An empty source
+// uses the catalog embedded in the binary; otherwise source may be a file
+// path or an http(s) URL to fetch an updated catalog from.
+func GetVersions(source string) ([]Version, error) {
 	var content []byte
 
-	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
-		resp, err := http.Get(url)
+	if source == "" {
+		content = embeddedVersions
+	} else if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+		resp, err := http.Get(source)
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +43,7 @@ func GetVersions(url string) ([]Version, error) {
 			return nil, err
 		}
 	} else {
-		file, err := os.Open(url)
+		file, err := os.Open(source)
 		if err != nil {
 			return nil, err
 		}
