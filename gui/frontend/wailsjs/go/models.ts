@@ -24,7 +24,25 @@ export namespace main {
 }
 
 export namespace postgres {
-	
+
+	export class Extension {
+	    name: string;
+	    version: string;
+	    installed: boolean;
+	    comment: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Extension(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.installed = source["installed"];
+	        this.comment = source["comment"];
+	    }
+	}
 	export class Version {
 	    version: string;
 	    current_minor: string;

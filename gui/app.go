@@ -179,12 +179,8 @@ func (a *App) StopServer(version string) error {
 
 // OpenPsql opens a terminal window with psql connected to the running server.
 func (a *App) OpenPsql(version string) error {
-	running, _, err := postgres.ServerStatus(version)
-	if err != nil {
+	if err := requireRunning(version); err != nil {
 		return err
-	}
-	if !running {
-		return fmt.Errorf("PostgreSQL %s is not running", version)
 	}
 
 	dir, err := postgres.InstallDir(version)
@@ -198,4 +194,40 @@ func (a *App) OpenPsql(version string) error {
 // GetLogs returns the tail of a version's server log.
 func (a *App) GetLogs(version string) (string, error) {
 	return postgres.TailLog(version, logLines)
+}
+
+// ListExtensions returns every extension available to a running version's
+// server, and whether it's currently installed.
+func (a *App) ListExtensions(version string) ([]postgres.Extension, error) {
+	if err := requireRunning(version); err != nil {
+		return nil, err
+	}
+	return postgres.ListExtensions(version, serverPort)
+}
+
+// InstallExtension enables an extension on a running version's server.
+func (a *App) InstallExtension(version, name string) error {
+	if err := requireRunning(version); err != nil {
+		return err
+	}
+	return postgres.InstallExtension(version, serverPort, name)
+}
+
+// UninstallExtension disables an extension on a running version's server.
+func (a *App) UninstallExtension(version, name string) error {
+	if err := requireRunning(version); err != nil {
+		return err
+	}
+	return postgres.UninstallExtension(version, serverPort, name)
+}
+
+func requireRunning(version string) error {
+	running, _, err := postgres.ServerStatus(version)
+	if err != nil {
+		return err
+	}
+	if !running {
+		return fmt.Errorf("PostgreSQL %s is not running", version)
+	}
+	return nil
 }

@@ -11,6 +11,9 @@ import {
     StopServer,
     OpenPsql,
     GetLogs,
+    ListExtensions,
+    InstallExtension,
+    UninstallExtension,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -44,6 +47,18 @@ document.querySelector('#app').innerHTML = `
         <button id="logs-close">Close</button>
       </div>
       <pre class="log-view" id="logs-body"></pre>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="extensions-overlay" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="extensions-title">Extensions</h2>
+        <span class="spacer"></span>
+        <button id="extensions-refresh">Refresh</button>
+        <button id="extensions-close">Close</button>
+      </div>
+      <div class="extensions-list" id="extensions-body"></div>
     </div>
   </div>
 `;
@@ -90,6 +105,81 @@ function closeLogs() {
 
 logsRefreshBtn.addEventListener('click', refreshLogs);
 logsCloseBtn.addEventListener('click', closeLogs);
+
+const extensionsOverlay = document.getElementById('extensions-overlay');
+const extensionsTitle = document.getElementById('extensions-title');
+const extensionsBody = document.getElementById('extensions-body');
+const extensionsRefreshBtn = document.getElementById('extensions-refresh');
+const extensionsCloseBtn = document.getElementById('extensions-close');
+
+let extensionsVersion = null;
+
+async function refreshExtensions() {
+    if (!extensionsVersion) return;
+    try {
+        const extensions = await ListExtensions(extensionsVersion);
+        renderExtensions(extensions || []);
+    } catch (err) {
+        extensionsBody.innerHTML = `<div class="empty">${errorMessage(err)}</div>`;
+    }
+}
+
+function renderExtensions(extensions) {
+    extensionsBody.innerHTML = '';
+
+    if (extensions.length === 0) {
+        extensionsBody.innerHTML = '<div class="empty">No extensions available.</div>';
+        return;
+    }
+
+    for (const e of extensions) {
+        const row = document.createElement('div');
+        row.className = 'extension-row';
+
+        row.innerHTML = `
+      <div class="extension-info">
+        <span class="extension-name">${e.name}</span>
+        ${e.installed ? `<span class="badge badge-current">${e.version}</span>` : ''}
+        <div class="extension-comment">${e.comment}</div>
+      </div>
+    `;
+
+        const action = e.installed
+            ? () => runExtensionAction(UninstallExtension, e.name, `Uninstall ${e.name}`)
+            : () => runExtensionAction(InstallExtension, e.name, `Install ${e.name}`);
+        const btn = makeButton(e.installed ? 'Uninstall' : 'Install', action);
+        btn.classList.add(e.installed ? 'danger' : 'primary');
+        row.appendChild(btn);
+
+        extensionsBody.appendChild(row);
+    }
+}
+
+async function runExtensionAction(fn, name, description) {
+    try {
+        await fn(extensionsVersion, name);
+        log(`${description}: done.`);
+    } catch (err) {
+        log(`${description}: ${errorMessage(err)}`, true);
+    } finally {
+        await refreshExtensions();
+    }
+}
+
+function openExtensions(version) {
+    extensionsVersion = version;
+    extensionsTitle.textContent = `Extensions — PostgreSQL ${version}`;
+    extensionsOverlay.hidden = false;
+    refreshExtensions();
+}
+
+function closeExtensions() {
+    extensionsOverlay.hidden = true;
+    extensionsVersion = null;
+}
+
+extensionsRefreshBtn.addEventListener('click', refreshExtensions);
+extensionsCloseBtn.addEventListener('click', closeExtensions);
 
 function log(message, isError = false) {
     const line = document.createElement('div');
@@ -158,6 +248,7 @@ function renderInstalled(versions) {
         } else if (v.running) {
             row.appendChild(makeButton('Stop', () => runAction(() => StopServer(v.version), `Stop ${v.version}`)));
             row.appendChild(makeButton('Open psql', () => runAction(() => OpenPsql(v.version), `Open psql for ${v.version}`)));
+            row.appendChild(makeButton('Extensions', () => openExtensions(v.version)));
         } else {
             row.appendChild(makeButton('Start', () => runAction(() => StartServer(v.version), `Start ${v.version}`)));
         }

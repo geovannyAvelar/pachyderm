@@ -9,7 +9,11 @@ export function InitDataDir(arg1:string):Promise<void>;
 
 export function Install(arg1:string):Promise<void>;
 
+export function InstallExtension(arg1:string,arg2:string):Promise<void>;
+
 export function ListAvailable():Promise<Array<postgres.Version>>;
+
+export function ListExtensions(arg1:string):Promise<Array<postgres.Extension>>;
 
 export function ListInstalled():Promise<Array<main.VersionState>>;
 
@@ -20,5 +24,7 @@ export function StartServer(arg1:string):Promise<void>;
 export function StopServer(arg1:string):Promise<void>;
 
 export function Uninstall(arg1:string):Promise<void>;
+
+export function UninstallExtension(arg1:string,arg2:string):Promise<void>;
 
 export function Use(arg1:string):Promise<void>;

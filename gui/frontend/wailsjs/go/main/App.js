@@ -14,8 +14,16 @@ export function Install(arg1) {
   return window['go']['main']['App']['Install'](arg1);
 }
 
+export function InstallExtension(arg1, arg2) {
+  return window['go']['main']['App']['InstallExtension'](arg1, arg2);
+}
+
 export function ListAvailable() {
   return window['go']['main']['App']['ListAvailable']();
+}
+
+export function ListExtensions(arg1) {
+  return window['go']['main']['App']['ListExtensions'](arg1);
 }
 
 export function ListInstalled() {
@@ -36,6 +44,10 @@ export function StopServer(arg1) {
 
 export function Uninstall(arg1) {
   return window['go']['main']['App']['Uninstall'](arg1);
+}
+
+export function UninstallExtension(arg1, arg2) {
+  return window['go']['main']['App']['UninstallExtension'](arg1, arg2);
 }
 
 export function Use(arg1) {
