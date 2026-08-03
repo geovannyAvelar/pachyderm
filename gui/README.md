@@ -36,3 +36,7 @@ The "Extensions" panel on a running version lists everything `pg_available_exten
 - [`frontend/`](frontend/) — a small vanilla JS/Vite UI; see [`frontend/src/main.js`](frontend/src/main.js).
 
 Project settings (name, output filename, frontend build commands) live in [`wails.json`](wails.json); see the [Wails project config docs](https://wails.io/docs/reference/project-config) for details.
+
+## Icon
+
+`build/appicon.png` and `build/windows/icon.ico` (used for the app, Dock/taskbar, and tray icon) are the 🐘 elephant emoji from Google's [Noto Emoji](https://github.com/googlefonts/noto-emoji), licensed under the SIL Open Font License 1.1 / Apache License 2.0 (the project's own docs list both; see its `LICENSE`).
