@@ -14,13 +14,18 @@ import {
     ListExtensions,
     InstallExtension,
     UninstallExtension,
+    Quit,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
 document.querySelector('#app').innerHTML = `
   <header>
-    <h1>🐘 Pachyderm</h1>
-    <p>Local PostgreSQL versions, managed.</p>
+    <div>
+      <h1>🐘 Pachyderm</h1>
+      <p>Local PostgreSQL versions, managed.</p>
+    </div>
+    <span class="spacer"></span>
+    <button class="danger" id="quit-btn">Quit</button>
   </header>
 
   <div class="panel">
@@ -308,6 +313,8 @@ installBtn.addEventListener('click', () => {
         installBtn.disabled = false;
     });
 });
+
+document.getElementById('quit-btn').addEventListener('click', () => Quit());
 
 EventsOn('log', (message) => log(message));
 

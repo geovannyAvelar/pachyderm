@@ -16,10 +16,15 @@ func (a *App) onTrayReady() {
 	systray.SetIcon(trayIcon)
 	systray.SetTooltip("Pachyderm")
 
-	// On Linux, a left click with no handler registered is a no-op (unlike
+	// On Linux, a click with no handler registered is a no-op (unlike
 	// Windows/macOS, which fall back to showing the menu) — so without
-	// this, clicking the tray icon does nothing.
+	// these, clicking the tray icon does nothing. Registering both means
+	// every click reliably does something, regardless of whether this
+	// desktop's tray host renders the Show/Quit menu on its own.
 	systray.SetOnTapped(func() {
+		wailsruntime.WindowShow(a.ctx)
+	})
+	systray.SetOnSecondaryTapped(func() {
 		wailsruntime.WindowShow(a.ctx)
 	})
 

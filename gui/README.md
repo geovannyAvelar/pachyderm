@@ -6,7 +6,7 @@ See the [root README](../README.md) for what Pachyderm is and how the CLI and ap
 
 ## Runs in the background
 
-Pachyderm has no Dock/taskbar icon — it lives entirely in the menu bar/tray. It starts hidden with just a tray icon; closing the window hides it instead of quitting. Use the tray menu's "Show Pachyderm" to reopen the window and "Quit Pachyderm" to actually exit.
+Pachyderm has no Dock/taskbar icon — it lives entirely in the menu bar/tray. It starts hidden with just a tray icon; closing the window hides it instead of quitting. Click the tray icon to reopen the window; its menu also has "Show Pachyderm" and "Quit Pachyderm". Native tray context-menu rendering is inconsistent across Linux desktop environments, so there's also a "Quit" button in the app's own header as a guaranteed way out.
 
 ## Live development
 
@@ -32,7 +32,7 @@ PostGIS is *not* available here: it isn't part of the standard `contrib` bundle,
 
 ## Layout
 
-- [`app.go`](app.go) — the Wails-bound backend: `ListInstalled`, `ListAvailable`, `Install`, `Use`, `Uninstall`, `InitDataDir`, `StartServer`, `StopServer`, `OpenPsql`, `GetLogs`, `ListExtensions`, `InstallExtension`, `UninstallExtension`. Progress during install is streamed to the frontend via a `log` event.
+- [`app.go`](app.go) — the Wails-bound backend: `ListInstalled`, `ListAvailable`, `Install`, `Use`, `Uninstall`, `InitDataDir`, `StartServer`, `StopServer`, `OpenPsql`, `GetLogs`, `ListExtensions`, `InstallExtension`, `UninstallExtension`, `Quit`. Progress during install is streamed to the frontend via a `log` event.
 - [`terminal.go`](terminal.go) — opens a terminal window running `psql` against the active server.
 - [`tray.go`](tray.go) / `tray_icon_*.go` — the menu-bar/tray icon and its Show/Quit menu.
 - [`frontend/`](frontend/) — a small vanilla JS/Vite UI; see [`frontend/src/main.js`](frontend/src/main.js).

@@ -32,6 +32,11 @@ html, body {
     gap: 16px;
 }
 
+header {
+    display: flex;
+    align-items: center;
+}
+
 header h1 {
     margin: 0;
     font-size: 20px;

@@ -34,6 +34,10 @@ export function OpenPsql(arg1) {
   return window['go']['main']['App']['OpenPsql'](arg1);
 }
 
+export function Quit() {
+  return window['go']['main']['App']['Quit']();
+}
+
 export function StartServer(arg1) {
   return window['go']['main']['App']['StartServer'](arg1);
 }

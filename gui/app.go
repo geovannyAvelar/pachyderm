@@ -221,6 +221,12 @@ func (a *App) UninstallExtension(version, name string) error {
 	return postgres.UninstallExtension(version, serverPort, name)
 }
 
+// Quit closes the app. HideWindowOnClose only hides the main window, so the
+// tray menu's "Quit Pachyderm" and this are the only ways to actually exit.
+func (a *App) Quit() {
+	wailsruntime.Quit(a.ctx)
+}
+
 func requireRunning(version string) error {
 	running, _, err := postgres.ServerStatus(version)
 	if err != nil {

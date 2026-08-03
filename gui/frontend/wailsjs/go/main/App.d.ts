@@ -19,6 +19,8 @@ export function ListInstalled():Promise<Array<main.VersionState>>;
 
 export function OpenPsql(arg1:string):Promise<void>;
 
+export function Quit():Promise<void>;
+
 export function StartServer(arg1:string):Promise<void>;
 
 export function StopServer(arg1:string):Promise<void>;
