@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Pachyderm
+Comment=Manage local PostgreSQL versions
+Exec=pachyderm-app
+Icon=pachyderm-app
+Terminal=false
+Categories=Development;Database;
+StartupWMClass=pachyderm-app

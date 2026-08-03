@@ -37,7 +37,13 @@ Build it from source (requires Go 1.24+):
 go build -o pachyderm .
 ```
 
-Or download a prebuilt binary from the [Releases page](../../releases) for Linux, macOS, or Windows.
+Or download a prebuilt binary from the [Releases page](../../releases) for Linux, macOS, or Windows. Debian/Ubuntu users can instead grab the `.deb` package from the same release and install it with:
+
+```bash
+sudo apt install ./pachyderm_<version>_amd64.deb
+```
+
+(the desktop app is packaged the same way, as `pachyderm-app_<version>_amd64.deb`, and registers itself in the applications menu).
 
 ## CLI usage
 
@@ -104,7 +110,7 @@ See [gui/README.md](gui/README.md) for Wails-specific details.
 
 ## Releases
 
-Pushing a version tag (e.g. `v0.0.1`) triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds the CLI (Linux/macOS/Windows) and the desktop app (Linux/macOS/Windows) and publishes all six artifacts to a GitHub Release under that tag.
+Pushing a version tag (e.g. `v0.0.1`) triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds the CLI (Linux/macOS/Windows) and the desktop app (Linux/macOS/Windows), plus `.deb` packages for both on Linux (built with [nfpm](https://nfpm.goreleaser.com/), configured in [`packaging/`](packaging/)), and publishes all eight artifacts to a GitHub Release under that tag.
 
 ## Development
 

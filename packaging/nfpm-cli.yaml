@@ -1,0 +1,19 @@
+name: pachyderm
+arch: amd64
+platform: linux
+version: ${VERSION}
+section: database
+priority: optional
+maintainer: "Giovanni Avelar <geovanny.avelar@gmail.com>"
+homepage: "https://github.com/geovannyAvelar/pachyderm"
+license: MIT
+description: |
+  A version manager for PostgreSQL: install, switch between, and run
+  multiple PostgreSQL versions locally, the way asdf or nvm manage other
+  runtimes.
+
+contents:
+  - src: ./dist/pachyderm-linux-amd64
+    dst: /usr/bin/pachyderm
+    file_info:
+      mode: 0755

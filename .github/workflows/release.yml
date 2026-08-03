@@ -41,6 +41,13 @@ jobs:
           mkdir -p dist
           go build -o dist/${{ matrix.asset }} .
 
+      - name: Build .deb package
+        if: matrix.goos == 'linux'
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
+          export VERSION="${GITHUB_REF_NAME#v}"
+          "$(go env GOPATH)/bin/nfpm" package -f packaging/nfpm-cli.yaml -p deb -t dist/
+
       # GitHub release assets are plain files, not archives, so the exec bit
       # set here is lost on download. Only tar preserves it through that
       # round trip, so ship non-Windows binaries inside a .tar.gz.
@@ -114,6 +121,13 @@ jobs:
           mkdir -p dist
           chmod +x gui/build/bin/pachyderm-app
           tar -C gui/build/bin -czf dist/pachyderm-app-linux-amd64.tar.gz pachyderm-app
+
+      - name: Build .deb package
+        if: matrix.platform == 'linux'
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
+          export VERSION="${GITHUB_REF_NAME#v}"
+          "$(go env GOPATH)/bin/nfpm" package -f packaging/nfpm-gui.yaml -p deb -t dist/
 
       - name: Package artifact (windows)
         if: matrix.platform == 'windows'
