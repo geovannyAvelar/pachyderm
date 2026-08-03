@@ -3,6 +3,7 @@ module pachyderm-app
 go 1.25.0
 
 require (
+	fyne.io/systray v1.12.2
 	github.com/wailsapp/wails/v2 v2.13.0
 	pachyderm v0.0.0
 )

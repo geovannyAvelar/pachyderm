@@ -24,7 +24,11 @@ func main() {
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        app.startup,
+		// Pachyderm lives in the menu bar/tray (see tray.go): it starts with
+		// no window, and closing the window hides it instead of quitting.
+		StartHidden:       true,
+		HideWindowOnClose: true,
+		OnStartup:         app.startup,
 		Bind: []interface{}{
 			app,
 		},
