@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -148,6 +149,29 @@ func StopServer(version string) error {
 	}
 
 	return nil
+}
+
+// TailLog returns up to the last n lines of a version's server log, written
+// by pg_ctl each time the server starts.
+func TailLog(version string, n int) (string, error) {
+	path, err := LogFile(version)
+	if err != nil {
+		return "", err
+	}
+
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "", fmt.Errorf("no log file for %s yet; start the server at least once", version)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n"), nil
 }
 
 var statusPIDRe = regexp.MustCompile(`\(PID:\s*(\d+)\)`)

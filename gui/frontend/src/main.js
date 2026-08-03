@@ -10,6 +10,7 @@ import {
     StartServer,
     StopServer,
     OpenPsql,
+    GetLogs,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -33,12 +34,62 @@ document.querySelector('#app').innerHTML = `
   </div>
 
   <div class="panel log" id="log"></div>
+
+  <div class="modal-overlay" id="logs-overlay" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="logs-title">Logs</h2>
+        <span class="spacer"></span>
+        <button id="logs-refresh">Refresh</button>
+        <button id="logs-close">Close</button>
+      </div>
+      <pre class="log-view" id="logs-body"></pre>
+    </div>
+  </div>
 `;
 
 const versionsEl = document.getElementById('versions');
 const availableEl = document.getElementById('available');
 const installBtn = document.getElementById('install-btn');
 const logEl = document.getElementById('log');
+
+const logsOverlay = document.getElementById('logs-overlay');
+const logsTitle = document.getElementById('logs-title');
+const logsBody = document.getElementById('logs-body');
+const logsRefreshBtn = document.getElementById('logs-refresh');
+const logsCloseBtn = document.getElementById('logs-close');
+
+let logsVersion = null;
+let logsTimer = null;
+
+async function refreshLogs() {
+    if (!logsVersion) return;
+    try {
+        const text = await GetLogs(logsVersion);
+        logsBody.textContent = text || '(empty)';
+        logsBody.scrollTop = logsBody.scrollHeight;
+    } catch (err) {
+        logsBody.textContent = errorMessage(err);
+    }
+}
+
+function openLogs(version) {
+    logsVersion = version;
+    logsTitle.textContent = `Logs — PostgreSQL ${version}`;
+    logsOverlay.hidden = false;
+    refreshLogs();
+    logsTimer = setInterval(refreshLogs, 2000);
+}
+
+function closeLogs() {
+    logsOverlay.hidden = true;
+    logsVersion = null;
+    clearInterval(logsTimer);
+    logsTimer = null;
+}
+
+logsRefreshBtn.addEventListener('click', refreshLogs);
+logsCloseBtn.addEventListener('click', closeLogs);
 
 function log(message, isError = false) {
     const line = document.createElement('div');
@@ -109,6 +160,10 @@ function renderInstalled(versions) {
             row.appendChild(makeButton('Open psql', () => runAction(() => OpenPsql(v.version), `Open psql for ${v.version}`)));
         } else {
             row.appendChild(makeButton('Start', () => runAction(() => StartServer(v.version), `Start ${v.version}`)));
+        }
+
+        if (v.initialized) {
+            row.appendChild(makeButton('Logs', () => openLogs(v.version)));
         }
 
         const uninstall = makeButton('Uninstall', () => runAction(() => Uninstall(v.version), `Uninstall ${v.version}`));

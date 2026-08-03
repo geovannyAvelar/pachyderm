@@ -3,6 +3,8 @@
 import {postgres} from '../models';
 import {main} from '../models';
 
+export function GetLogs(arg1:string):Promise<string>;
+
 export function InitDataDir(arg1:string):Promise<void>;
 
 export function Install(arg1:string):Promise<void>;

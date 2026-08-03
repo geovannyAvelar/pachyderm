@@ -14,6 +14,9 @@ import (
 // Only one version can be running at a time in this simple app.
 const serverPort = 5432
 
+// logLines is how many lines of a version's server log the app shows.
+const logLines = 200
+
 // App is the Wails-bound backend for the Pachyderm companion app.
 type App struct {
 	ctx context.Context
@@ -190,4 +193,9 @@ func (a *App) OpenPsql(version string) error {
 	}
 
 	return openPsqlTerminal(dir, serverPort)
+}
+
+// GetLogs returns the tail of a version's server log.
+func (a *App) GetLogs(version string) (string, error) {
+	return postgres.TailLog(version, logLines)
 }

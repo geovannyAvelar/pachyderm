@@ -96,6 +96,16 @@ Remove an installed version:
 pachyderm uninstall 15.18.0
 ```
 
+### `pachyderm logs <version>`
+
+Show the server log written by `pg_ctl` each time a version's server starts:
+
+```bash
+pachyderm logs 16.14.0           # last 100 lines
+pachyderm logs 16.14.0 -n 500    # last 500 lines
+pachyderm logs 16.14.0 -f        # follow the log as it grows
+```
+
 ## The desktop app
 
 `gui/` contains a [Wails](https://wails.io/) app that wraps the same install/switch logic with a UI for the parts the CLI doesn't do: initializing a data directory, starting/stopping a server, and opening `psql`.
