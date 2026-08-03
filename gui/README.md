@@ -1,19 +1,34 @@
-# README
+# Pachyderm desktop app
 
-## About
+A small [Wails](https://wails.io/) app that wraps the [`postgres`](../postgres/) package with a UI, similar to [Postgres.app](https://postgresapp.com/): install and switch PostgreSQL versions, initialize a data directory, start/stop a local server, and open `psql` against it.
 
-This is the official Wails Vanilla template.
+See the [root README](../README.md) for what Pachyderm is and how the CLI and app share the same version store under `~/.pachyderm/`.
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+## Runs in the background
 
-## Live Development
+Pachyderm has no Dock/taskbar icon — it lives entirely in the menu bar/tray. It starts hidden with just a tray icon; closing the window hides it instead of quitting. Use the tray menu's "Show Pachyderm" to reopen the window and "Quit Pachyderm" to actually exit.
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+## Live development
+
+```bash
+wails dev
+```
+
+Runs a Vite dev server with hot reload for the frontend. A dev server also runs on http://localhost:34115 — connect to it in a browser to call the bound Go methods from devtools.
 
 ## Building
 
-To build a redistributable, production mode package, use `wails build`.
+```bash
+wails build
+```
+
+Produces a production build in `build/bin`.
+
+## Layout
+
+- [`app.go`](app.go) — the Wails-bound backend: `ListInstalled`, `ListAvailable`, `Install`, `Use`, `Uninstall`, `InitDataDir`, `StartServer`, `StopServer`, `OpenPsql`. Progress during install is streamed to the frontend via a `log` event.
+- [`terminal.go`](terminal.go) — opens a terminal window running `psql` against the active server.
+- [`tray.go`](tray.go) / `tray_icon_*.go` — the menu-bar/tray icon and its Show/Quit menu.
+- [`frontend/`](frontend/) — a small vanilla JS/Vite UI; see [`frontend/src/main.js`](frontend/src/main.js).
+
+Project settings (name, output filename, frontend build commands) live in [`wails.json`](wails.json); see the [Wails project config docs](https://wails.io/docs/reference/project-config) for details.
