@@ -26,7 +26,9 @@ Produces a production build in `build/bin`.
 
 ## Extensions
 
-The "Extensions" panel on a running version lists everything `pg_available_extensions` reports — the standard PostgreSQL `contrib` modules bundled with every build (pgcrypto, hstore, pg_trgm, postgres_fdw, etc.) — and lets you enable (`CREATE EXTENSION`) or disable (`DROP EXTENSION`) them against the `postgres` database. Some extensions (like `uuid-ossp`) depend on system libraries that may not be installed; enabling them will surface `psql`'s error rather than fail silently.
+The "Extensions" panel on a running version lists everything `pg_available_extensions` reports — the standard PostgreSQL `contrib` modules bundled with every build (pgcrypto, hstore, pg_trgm, postgres_fdw, unaccent, etc.) — and lets you enable (`CREATE EXTENSION`) or disable (`DROP EXTENSION`) them against the `postgres` database, with a search box to filter by name or description. Some extensions (like `uuid-ossp`) depend on system libraries that may not be installed; enabling them will surface `psql`'s error rather than fail silently.
+
+PostGIS is *not* available here: it isn't part of the standard `contrib` bundle, theseus-rs's prebuilt binaries don't include it, and there's no prebuilt PostGIS binary anywhere compatible with those builds (PostGIS itself only ships via OS package managers, tied to their own PostgreSQL packages, plus it needs GEOS/PROJ/GDAL). Supporting it would mean compiling PostGIS and its dependency chain from source per platform — out of scope for now.
 
 ## Layout
 

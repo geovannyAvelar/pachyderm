@@ -58,6 +58,7 @@ document.querySelector('#app').innerHTML = `
         <button id="extensions-refresh">Refresh</button>
         <button id="extensions-close">Close</button>
       </div>
+      <input type="text" class="search-input" id="extensions-search" placeholder="Search extensions..." />
       <div class="extensions-list" id="extensions-body"></div>
     </div>
   </div>
@@ -111,24 +112,36 @@ const extensionsTitle = document.getElementById('extensions-title');
 const extensionsBody = document.getElementById('extensions-body');
 const extensionsRefreshBtn = document.getElementById('extensions-refresh');
 const extensionsCloseBtn = document.getElementById('extensions-close');
+const extensionsSearch = document.getElementById('extensions-search');
 
 let extensionsVersion = null;
+let extensionsCache = [];
 
 async function refreshExtensions() {
     if (!extensionsVersion) return;
     try {
-        const extensions = await ListExtensions(extensionsVersion);
-        renderExtensions(extensions || []);
+        extensionsCache = await ListExtensions(extensionsVersion) || [];
+        renderFilteredExtensions();
     } catch (err) {
+        extensionsCache = [];
         extensionsBody.innerHTML = `<div class="empty">${errorMessage(err)}</div>`;
     }
+}
+
+function renderFilteredExtensions() {
+    const query = extensionsSearch.value.trim().toLowerCase();
+    const filtered = query
+        ? extensionsCache.filter((e) => e.name.toLowerCase().includes(query) || e.comment.toLowerCase().includes(query))
+        : extensionsCache;
+    renderExtensions(filtered);
 }
 
 function renderExtensions(extensions) {
     extensionsBody.innerHTML = '';
 
     if (extensions.length === 0) {
-        extensionsBody.innerHTML = '<div class="empty">No extensions available.</div>';
+        const message = extensionsCache.length === 0 ? 'No extensions available.' : 'No extensions match your search.';
+        extensionsBody.innerHTML = `<div class="empty">${message}</div>`;
         return;
     }
 
@@ -169,6 +182,7 @@ async function runExtensionAction(fn, name, description) {
 function openExtensions(version) {
     extensionsVersion = version;
     extensionsTitle.textContent = `Extensions — PostgreSQL ${version}`;
+    extensionsSearch.value = '';
     extensionsOverlay.hidden = false;
     refreshExtensions();
 }
@@ -176,10 +190,12 @@ function openExtensions(version) {
 function closeExtensions() {
     extensionsOverlay.hidden = true;
     extensionsVersion = null;
+    extensionsCache = [];
 }
 
 extensionsRefreshBtn.addEventListener('click', refreshExtensions);
 extensionsCloseBtn.addEventListener('click', closeExtensions);
+extensionsSearch.addEventListener('input', renderFilteredExtensions);
 
 function log(message, isError = false) {
     const line = document.createElement('div');
