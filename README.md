@@ -1,6 +1,6 @@
 # Pachyderm 🐘
 
-A version manager for PostgreSQL — install, switch between, and run multiple PostgreSQL versions locally, the way [asdf](https://asdf-vm.com/) or [nvm](https://github.com/nvm-sh/nvm) manage other runtimes.
+A version manager for PostgreSQL — install, switch between, and run multiple PostgreSQL versions locally, just as [asdf](https://asdf-vm.com/) or [nvm](https://github.com/nvm-sh/nvm) manage other runtimes.
 
 Pachyderm ships two ways to use it:
 
