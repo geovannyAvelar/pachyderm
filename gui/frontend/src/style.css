@@ -241,6 +241,28 @@ select {
     font-weight: 600;
 }
 
+.settings-modal {
+    height: auto;
+    max-width: 420px;
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.toggle-row input {
+    width: 16px;
+    height: 16px;
+}
+
+.settings-error {
+    color: var(--bad);
+    font-size: 13px;
+}
+
 .extensions-list {
     flex: 1;
     min-height: 0;

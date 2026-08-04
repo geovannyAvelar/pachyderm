@@ -16,6 +16,8 @@ import {
     UninstallExtension,
     Quit,
     Version,
+    GetAutostartEnabled,
+    SetAutostartEnabled,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -26,6 +28,7 @@ document.querySelector('#app').innerHTML = `
       <p>Local PostgreSQL versions, managed.</p>
     </div>
     <span class="spacer"></span>
+    <button id="settings-btn">Settings</button>
     <button class="danger" id="quit-btn">Quit</button>
   </header>
 
@@ -66,6 +69,21 @@ document.querySelector('#app').innerHTML = `
       </div>
       <input type="text" class="search-input" id="extensions-search" placeholder="Search extensions..." />
       <div class="extensions-list" id="extensions-body"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="settings-overlay" hidden>
+    <div class="modal settings-modal">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <span class="spacer"></span>
+        <button id="settings-close">Close</button>
+      </div>
+      <label class="toggle-row">
+        <input type="checkbox" id="autostart-toggle" />
+        <span>Start Pachyderm when you log in</span>
+      </label>
+      <div class="settings-error" id="settings-error" hidden></div>
     </div>
   </div>
 `;
@@ -203,6 +221,44 @@ function closeExtensions() {
 extensionsRefreshBtn.addEventListener('click', refreshExtensions);
 extensionsCloseBtn.addEventListener('click', closeExtensions);
 extensionsSearch.addEventListener('input', renderFilteredExtensions);
+
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsCloseBtn = document.getElementById('settings-close');
+const autostartToggle = document.getElementById('autostart-toggle');
+const settingsError = document.getElementById('settings-error');
+
+async function openSettings() {
+    settingsError.hidden = true;
+    settingsOverlay.hidden = false;
+    try {
+        autostartToggle.checked = await GetAutostartEnabled();
+    } catch (err) {
+        settingsError.hidden = false;
+        settingsError.textContent = errorMessage(err);
+    }
+}
+
+function closeSettings() {
+    settingsOverlay.hidden = true;
+}
+
+autostartToggle.addEventListener('change', async () => {
+    const desired = autostartToggle.checked;
+    autostartToggle.disabled = true;
+    settingsError.hidden = true;
+    try {
+        await SetAutostartEnabled(desired);
+    } catch (err) {
+        autostartToggle.checked = !desired;
+        settingsError.hidden = false;
+        settingsError.textContent = errorMessage(err);
+    } finally {
+        autostartToggle.disabled = false;
+    }
+});
+
+document.getElementById('settings-btn').addEventListener('click', openSettings);
+settingsCloseBtn.addEventListener('click', closeSettings);
 
 function log(message, isError = false) {
     const line = document.createElement('div');

@@ -30,12 +30,23 @@ The "Extensions" panel on a running version lists everything `pg_available_exten
 
 PostGIS is *not* available here: it isn't part of the standard `contrib` bundle, theseus-rs's prebuilt binaries don't include it, and there's no prebuilt PostGIS binary anywhere compatible with those builds (PostGIS itself only ships via OS package managers, tied to their own PostgreSQL packages, plus it needs GEOS/PROJ/GDAL). Supporting it would mean compiling PostGIS and its dependency chain from source per platform — out of scope for now.
 
+## Settings
+
+The "Settings" panel (in the header) has a single toggle: "Start Pachyderm when you log in", **off by default**. Turning it on registers the app to launch at login, per-platform:
+
+- **Linux** — an XDG autostart entry at `~/.config/autostart/pachyderm-app.desktop`.
+- **macOS** — a per-user LaunchAgent at `~/Library/LaunchAgents/dev.avelar.pachyderm-app.plist`, loaded via `launchctl`.
+- **Windows** — a `Pachyderm` value under `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`.
+
+All three point at whatever binary is currently running (`os.Executable()`), so it works the same whether you're running a portable download, a `.deb` install, or a `wails dev` build. Since the app already starts hidden (see above), an autostarted launch just puts the tray icon up — no window pops open. Implemented per-OS in `autostart_linux.go` / `autostart_darwin.go` / `autostart_windows.go`, behind a shared `isAutostartEnabled`/`setAutostart` pair.
+
 ## Layout
 
-- [`app.go`](app.go) — the Wails-bound backend: `ListInstalled`, `ListAvailable`, `Install`, `Use`, `Uninstall`, `InitDataDir`, `StartServer`, `StopServer`, `OpenPsql`, `GetLogs`, `ListExtensions`, `InstallExtension`, `UninstallExtension`, `Quit`. Progress during install is streamed to the frontend via a `log` event.
+- [`app.go`](app.go) — the Wails-bound backend: `ListInstalled`, `ListAvailable`, `Install`, `Use`, `Uninstall`, `InitDataDir`, `StartServer`, `StopServer`, `OpenPsql`, `GetLogs`, `ListExtensions`, `InstallExtension`, `UninstallExtension`, `Quit`, `GetAutostartEnabled`, `SetAutostartEnabled`. Progress during install is streamed to the frontend via a `log` event.
 - [`terminal.go`](terminal.go) — opens a terminal window running `psql` against the active server.
 - [`tray.go`](tray.go) / `tray_icon_*.go` — the menu-bar/tray icon and its Show/Quit menu.
 - [`version.go`](version.go) — the app's own version, bound as `Version`.
+- [`autostart_linux.go`](autostart_linux.go) / [`autostart_darwin.go`](autostart_darwin.go) / [`autostart_windows.go`](autostart_windows.go) — the per-platform "start at login" implementation.
 - [`frontend/`](frontend/) — a small vanilla JS/Vite UI; see [`frontend/src/main.js`](frontend/src/main.js).
 
 Project settings (name, output filename, frontend build commands) live in [`wails.json`](wails.json); see the [Wails project config docs](https://wails.io/docs/reference/project-config) for details.

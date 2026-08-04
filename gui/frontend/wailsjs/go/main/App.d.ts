@@ -3,6 +3,8 @@
 import {postgres} from '../models';
 import {main} from '../models';
 
+export function GetAutostartEnabled():Promise<boolean>;
+
 export function GetLogs(arg1:string):Promise<string>;
 
 export function InitDataDir(arg1:string):Promise<void>;
@@ -20,6 +22,8 @@ export function ListInstalled():Promise<Array<main.VersionState>>;
 export function OpenPsql(arg1:string):Promise<void>;
 
 export function Quit():Promise<void>;
+
+export function SetAutostartEnabled(arg1:boolean):Promise<void>;
 
 export function StartServer(arg1:string):Promise<void>;
 

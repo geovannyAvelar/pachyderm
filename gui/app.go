@@ -227,6 +227,17 @@ func (a *App) Quit() {
 	wailsruntime.Quit(a.ctx)
 }
 
+// GetAutostartEnabled reports whether Pachyderm is set to start when the
+// user logs in. Off by default.
+func (a *App) GetAutostartEnabled() (bool, error) {
+	return isAutostartEnabled()
+}
+
+// SetAutostartEnabled turns starting Pachyderm at login on or off.
+func (a *App) SetAutostartEnabled(enabled bool) error {
+	return setAutostart(enabled)
+}
+
 func requireRunning(version string) error {
 	running, _, err := postgres.ServerStatus(version)
 	if err != nil {
