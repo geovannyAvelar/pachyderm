@@ -35,6 +35,7 @@ html, body {
 header {
     display: flex;
     align-items: center;
+    gap: 10px;
 }
 
 header h1 {
