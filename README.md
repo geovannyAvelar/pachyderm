@@ -106,6 +106,17 @@ pachyderm logs 16.14.0 -n 500    # last 500 lines
 pachyderm logs 16.14.0 -f        # follow the log as it grows
 ```
 
+### `pachyderm version`
+
+Print the CLI's own version (also available as `pachyderm --version`):
+
+```bash
+$ pachyderm version
+0.0.10
+```
+
+Release builds have the real version baked in via `-ldflags`; a build from source prints `dev`.
+
 ## The desktop app
 
 `gui/` contains a [Wails](https://wails.io/) app that wraps the same install/switch logic with a UI for the parts the CLI doesn't do: initializing a data directory, starting/stopping a server, opening `psql`, and enabling extensions (`CREATE EXTENSION`) on a running server — every extension bundled with PostgreSQL's own `contrib` (pgcrypto, hstore, pg_trgm, postgres_fdw, and so on), the same set Postgres.app ships with.

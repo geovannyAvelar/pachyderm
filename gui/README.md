@@ -22,7 +22,7 @@ Runs a Vite dev server with hot reload for the frontend. A dev server also runs 
 wails build
 ```
 
-Produces a production build in `build/bin`.
+Produces a production build in `build/bin`. The version shown in the app's header (next to the title) comes from [`version.go`](version.go)'s `appVersion`, set at build time via `wails build -ldflags "-X main.appVersion=..."`; a local build without that flag shows `dev`.
 
 ## Extensions
 
@@ -35,6 +35,7 @@ PostGIS is *not* available here: it isn't part of the standard `contrib` bundle,
 - [`app.go`](app.go) — the Wails-bound backend: `ListInstalled`, `ListAvailable`, `Install`, `Use`, `Uninstall`, `InitDataDir`, `StartServer`, `StopServer`, `OpenPsql`, `GetLogs`, `ListExtensions`, `InstallExtension`, `UninstallExtension`, `Quit`. Progress during install is streamed to the frontend via a `log` event.
 - [`terminal.go`](terminal.go) — opens a terminal window running `psql` against the active server.
 - [`tray.go`](tray.go) / `tray_icon_*.go` — the menu-bar/tray icon and its Show/Quit menu.
+- [`version.go`](version.go) — the app's own version, bound as `Version`.
 - [`frontend/`](frontend/) — a small vanilla JS/Vite UI; see [`frontend/src/main.js`](frontend/src/main.js).
 
 Project settings (name, output filename, frontend build commands) live in [`wails.json`](wails.json); see the [Wails project config docs](https://wails.io/docs/reference/project-config) for details.

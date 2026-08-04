@@ -15,13 +15,14 @@ import {
     InstallExtension,
     UninstallExtension,
     Quit,
+    Version,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
 document.querySelector('#app').innerHTML = `
   <header>
     <div>
-      <h1>🐘 Pachyderm</h1>
+      <h1>🐘 Pachyderm <span class="app-version" id="app-version"></span></h1>
       <p>Local PostgreSQL versions, managed.</p>
     </div>
     <span class="spacer"></span>
@@ -73,6 +74,7 @@ const versionsEl = document.getElementById('versions');
 const availableEl = document.getElementById('available');
 const installBtn = document.getElementById('install-btn');
 const logEl = document.getElementById('log');
+const appVersionEl = document.getElementById('app-version');
 
 const logsOverlay = document.getElementById('logs-overlay');
 const logsTitle = document.getElementById('logs-title');
@@ -317,6 +319,10 @@ installBtn.addEventListener('click', () => {
 document.getElementById('quit-btn').addEventListener('click', () => Quit());
 
 EventsOn('log', (message) => log(message));
+
+Version().then((v) => {
+    appVersionEl.textContent = `v${v}`;
+});
 
 refreshAvailable();
 refreshInstalled();

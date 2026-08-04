@@ -30,3 +30,5 @@ export function Uninstall(arg1:string):Promise<void>;
 export function UninstallExtension(arg1:string,arg2:string):Promise<void>;
 
 export function Use(arg1:string):Promise<void>;
+
+export function Version():Promise<string>;

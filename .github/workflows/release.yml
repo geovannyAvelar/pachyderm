@@ -39,7 +39,8 @@ jobs:
           CGO_ENABLED: 0
         run: |
           mkdir -p dist
-          go build -o dist/${{ matrix.asset }} .
+          VERSION="${GITHUB_REF_NAME#v}"
+          go build -ldflags "-X pachyderm/cmd.version=${VERSION}" -o dist/${{ matrix.asset }} .
 
       - name: Build .deb package
         if: matrix.goos == 'linux'
@@ -104,14 +105,20 @@ jobs:
       - name: Build GUI (linux)
         if: matrix.platform == 'linux'
         working-directory: gui
+        shell: bash
         # Ubuntu no longer ships libwebkit2gtk-4.0-dev; only 4.1 is available,
         # so Wails needs the webkit2_41 build tag to pkg-config against it.
-        run: wails build -tags webkit2_41
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          wails build -tags webkit2_41 -ldflags "-X main.appVersion=${VERSION}"
 
       - name: Build GUI (windows/macos)
         if: matrix.platform != 'linux'
         working-directory: gui
-        run: wails build
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          wails build -ldflags "-X main.appVersion=${VERSION}"
 
       - name: Package artifact (linux)
         if: matrix.platform == 'linux'

@@ -57,3 +57,7 @@ export function UninstallExtension(arg1, arg2) {
 export function Use(arg1) {
   return window['go']['main']['App']['Use'](arg1);
 }
+
+export function Version() {
+  return window['go']['main']['App']['Version']();
+}
