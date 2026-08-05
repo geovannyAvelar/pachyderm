@@ -29,6 +29,41 @@ func LogFile(version string) (string, error) {
 	return filepath.Join(base, "logs", version+".log"), nil
 }
 
+// ConfigFiles is the location of a version's data directory and the config
+// files initdb placed inside it.
+type ConfigFiles struct {
+	DataDir    string `json:"dataDir"`
+	ConfigFile string `json:"configFile"`
+	HBAFile    string `json:"hbaFile"`
+	IdentFile  string `json:"identFile"`
+}
+
+// GetConfigFiles returns the paths to a version's postgresql.conf, pg_hba.conf,
+// and pg_ident.conf, and the data directory containing them. It errors if the
+// data directory has not been initialized yet, since those files don't exist
+// until initdb creates them.
+func GetConfigFiles(version string) (ConfigFiles, error) {
+	initialized, err := IsDataDirInitialized(version)
+	if err != nil {
+		return ConfigFiles{}, err
+	}
+	if !initialized {
+		return ConfigFiles{}, fmt.Errorf("data directory for %s is not initialized yet", version)
+	}
+
+	dir, err := DataDir(version)
+	if err != nil {
+		return ConfigFiles{}, err
+	}
+
+	return ConfigFiles{
+		DataDir:    dir,
+		ConfigFile: filepath.Join(dir, "postgresql.conf"),
+		HBAFile:    filepath.Join(dir, "pg_hba.conf"),
+		IdentFile:  filepath.Join(dir, "pg_ident.conf"),
+	}, nil
+}
+
 func binPath(version, name string) (string, error) {
 	installed, err := IsInstalled(version)
 	if err != nil {

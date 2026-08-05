@@ -24,17 +24,35 @@ export namespace main {
 }
 
 export namespace postgres {
-
+	
+	export class ConfigFiles {
+	    dataDir: string;
+	    configFile: string;
+	    hbaFile: string;
+	    identFile: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConfigFiles(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dataDir = source["dataDir"];
+	        this.configFile = source["configFile"];
+	        this.hbaFile = source["hbaFile"];
+	        this.identFile = source["identFile"];
+	    }
+	}
 	export class Extension {
 	    name: string;
 	    version: string;
 	    installed: boolean;
 	    comment: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Extension(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];

@@ -6,6 +6,10 @@ export function GetAutostartEnabled() {
   return window['go']['main']['App']['GetAutostartEnabled']();
 }
 
+export function GetConfigFiles(arg1) {
+  return window['go']['main']['App']['GetConfigFiles'](arg1);
+}
+
 export function GetLogs(arg1) {
   return window['go']['main']['App']['GetLogs'](arg1);
 }
@@ -40,6 +44,10 @@ export function OpenPsql(arg1) {
 
 export function Quit() {
   return window['go']['main']['App']['Quit']();
+}
+
+export function RevealConfigFile(arg1) {
+  return window['go']['main']['App']['RevealConfigFile'](arg1);
 }
 
 export function SetAutostartEnabled(arg1) {

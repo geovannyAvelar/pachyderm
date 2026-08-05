@@ -125,6 +125,43 @@ func TestServerStatusNotInitialized(t *testing.T) {
 	}
 }
 
+func TestGetConfigFiles(t *testing.T) {
+	withTempHome(t)
+	const version = "16.14.0"
+
+	if _, err := GetConfigFiles(version); err == nil {
+		t.Fatal("expected error for uninitialized data directory")
+	}
+
+	dataDir, err := DataDir(version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataDir, "PG_VERSION"), []byte("16"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := GetConfigFiles(version)
+	if err != nil {
+		t.Fatalf("GetConfigFiles: %v", err)
+	}
+	if files.DataDir != dataDir {
+		t.Errorf("DataDir = %q, want %q", files.DataDir, dataDir)
+	}
+	if want := filepath.Join(dataDir, "postgresql.conf"); files.ConfigFile != want {
+		t.Errorf("ConfigFile = %q, want %q", files.ConfigFile, want)
+	}
+	if want := filepath.Join(dataDir, "pg_hba.conf"); files.HBAFile != want {
+		t.Errorf("HBAFile = %q, want %q", files.HBAFile, want)
+	}
+	if want := filepath.Join(dataDir, "pg_ident.conf"); files.IdentFile != want {
+		t.Errorf("IdentFile = %q, want %q", files.IdentFile, want)
+	}
+}
+
 func TestStartServerRequiresInitializedDataDir(t *testing.T) {
 	withTempHome(t)
 	const version = "16.14.0"

@@ -298,6 +298,41 @@ select {
     margin-top: 2px;
 }
 
+.config-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.config-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+}
+
+.config-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.config-label {
+    font-weight: 600;
+}
+
+.config-path {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 2px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    word-break: break-all;
+}
+
 .log-view {
     flex: 1;
     min-height: 0;

@@ -11,6 +11,8 @@ import {
     StopServer,
     OpenPsql,
     GetLogs,
+    GetConfigFiles,
+    RevealConfigFile,
     ListExtensions,
     InstallExtension,
     UninstallExtension,
@@ -56,6 +58,17 @@ document.querySelector('#app').innerHTML = `
         <button id="logs-close">Close</button>
       </div>
       <pre class="log-view" id="logs-body"></pre>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="config-overlay" hidden>
+    <div class="modal settings-modal">
+      <div class="modal-header">
+        <h2 id="config-title">Config files</h2>
+        <span class="spacer"></span>
+        <button id="config-close">Close</button>
+      </div>
+      <div class="config-list" id="config-body"></div>
     </div>
   </div>
 
@@ -131,6 +144,48 @@ function closeLogs() {
 
 logsRefreshBtn.addEventListener('click', refreshLogs);
 logsCloseBtn.addEventListener('click', closeLogs);
+
+const configOverlay = document.getElementById('config-overlay');
+const configTitle = document.getElementById('config-title');
+const configBody = document.getElementById('config-body');
+const configCloseBtn = document.getElementById('config-close');
+
+const configFileLabels = [
+    ['dataDir', 'Data directory'],
+    ['configFile', 'postgresql.conf'],
+    ['hbaFile', 'pg_hba.conf'],
+    ['identFile', 'pg_ident.conf'],
+];
+
+async function openConfig(version) {
+    configTitle.textContent = `Config files — PostgreSQL ${version}`;
+    configBody.innerHTML = '';
+    configOverlay.hidden = false;
+
+    try {
+        const files = await GetConfigFiles(version);
+        for (const [key, label] of configFileLabels) {
+            const row = document.createElement('div');
+            row.className = 'config-row';
+            row.innerHTML = `
+        <div class="config-info">
+          <span class="config-label">${label}</span>
+          <div class="config-path">${files[key]}</div>
+        </div>
+      `;
+            row.appendChild(makeButton('Reveal', () => RevealConfigFile(files[key])));
+            configBody.appendChild(row);
+        }
+    } catch (err) {
+        configBody.innerHTML = `<div class="empty">${errorMessage(err)}</div>`;
+    }
+}
+
+function closeConfig() {
+    configOverlay.hidden = true;
+}
+
+configCloseBtn.addEventListener('click', closeConfig);
 
 const extensionsOverlay = document.getElementById('extensions-overlay');
 const extensionsTitle = document.getElementById('extensions-title');
@@ -334,6 +389,7 @@ function renderInstalled(versions) {
 
         if (v.initialized) {
             row.appendChild(makeButton('Logs', () => openLogs(v.version)));
+            row.appendChild(makeButton('Config', () => openConfig(v.version)));
         }
 
         const uninstall = makeButton('Uninstall', () => runAction(() => Uninstall(v.version), `Uninstall ${v.version}`));

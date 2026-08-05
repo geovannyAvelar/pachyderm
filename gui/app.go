@@ -196,6 +196,17 @@ func (a *App) GetLogs(version string) (string, error) {
 	return postgres.TailLog(version, logLines)
 }
 
+// GetConfigFiles returns the paths to a version's data directory and its
+// postgresql.conf, pg_hba.conf, and pg_ident.conf.
+func (a *App) GetConfigFiles(version string) (postgres.ConfigFiles, error) {
+	return postgres.GetConfigFiles(version)
+}
+
+// RevealConfigFile opens the native file manager with path selected.
+func (a *App) RevealConfigFile(path string) error {
+	return revealInFileManager(path)
+}
+
 // ListExtensions returns every extension available to a running version's
 // server, and whether it's currently installed.
 func (a *App) ListExtensions(version string) ([]postgres.Extension, error) {
