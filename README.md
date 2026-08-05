@@ -41,13 +41,24 @@ Build it from source (requires Go 1.24+):
 go build -o pachyderm .
 ```
 
-Or download a prebuilt binary from the [Releases page](../../releases) for Linux, macOS, or Windows. Debian/Ubuntu users can instead grab the `.deb` package from the same release and install it with:
+Or download a prebuilt binary from the [Releases page](../../releases) for Linux, macOS, or Windows.
+
+Debian/Ubuntu users can add the project's APT repository instead, which also picks up future updates via `apt upgrade`:
+
+```bash
+sudo curl -fsSL https://geovannyAvelar.github.io/pachyderm/pubkey.gpg -o /usr/share/keyrings/pachyderm.gpg
+echo "deb [signed-by=/usr/share/keyrings/pachyderm.gpg] https://geovannyAvelar.github.io/pachyderm stable main" | sudo tee /etc/apt/sources.list.d/pachyderm.list
+sudo apt update
+sudo apt install pachyderm
+```
+
+(the desktop app is in the same repo — `sudo apt install pachyderm-app` — and registers itself in the applications menu).
+
+Or grab the `.deb` directly from a release and install it without adding the repo:
 
 ```bash
 sudo apt install ./pachyderm_<version>_amd64.deb
 ```
-
-(the desktop app is packaged the same way, as `pachyderm-app_<version>_amd64.deb`, and registers itself in the applications menu).
 
 ## CLI usage
 
