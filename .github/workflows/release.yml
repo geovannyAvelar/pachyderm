@@ -229,7 +229,9 @@ jobs:
         run: |
           mkdir -p debs
           for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName'); do
-            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*.deb' --dir debs --skip-existing
+            # Older releases (before .deb packaging was added) have no matching
+            # assets, which makes gh exit non-zero; skip those, not the release.
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*.deb' --dir debs --skip-existing || true
           done
           ls -la debs
 
