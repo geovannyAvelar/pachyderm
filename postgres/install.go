@@ -39,7 +39,7 @@ func InstallDir(version string) (string, error) {
 	return filepath.Join(dir, version), nil
 }
 
-// CurrentLink returns the path of the "current" symlink.
+// CurrentLink returns the path of the "current" link.
 func CurrentLink() (string, error) {
 	base, err := HomeDir()
 	if err != nil {
@@ -48,7 +48,7 @@ func CurrentLink() (string, error) {
 	return filepath.Join(base, "current"), nil
 }
 
-// CurrentBinDir returns the bin directory reached through the "current" symlink.
+// CurrentBinDir returns the bin directory reached through the "current" link.
 func CurrentBinDir() (string, error) {
 	link, err := CurrentLink()
 	if err != nil {
@@ -197,7 +197,7 @@ func extractTar(r io.Reader, destDir string) error {
 	}
 }
 
-// SetCurrent points the "current" symlink at an installed version.
+// SetCurrent points the "current" link (a symlink on Unix, a junction on Windows) at an installed version.
 func SetCurrent(version string) error {
 	installed, err := IsInstalled(version)
 	if err != nil {
@@ -217,9 +217,9 @@ func SetCurrent(version string) error {
 		return err
 	}
 
-	if info, err := os.Lstat(link); err == nil {
-		if info.Mode()&os.ModeSymlink == 0 {
-			return fmt.Errorf("%s already exists and is not a symlink managed by pachyderm; remove it manually", link)
+	if _, err := os.Lstat(link); err == nil {
+		if _, err := os.Readlink(link); err != nil {
+			return fmt.Errorf("%s already exists and is not a link managed by pachyderm; remove it manually", link)
 		}
 		if err := os.Remove(link); err != nil {
 			return err
@@ -228,10 +228,10 @@ func SetCurrent(version string) error {
 		return err
 	}
 
-	return os.Symlink(dir, link)
+	return createCurrentLink(dir, link)
 }
 
-// CurrentVersion returns the version the "current" symlink points to, or ""
+// CurrentVersion returns the version the "current" link points to, or ""
 // if it has not been set.
 func CurrentVersion() (string, error) {
 	link, err := CurrentLink()
@@ -250,7 +250,7 @@ func CurrentVersion() (string, error) {
 	return filepath.Base(target), nil
 }
 
-// Uninstall removes an installed version, clearing the "current" symlink if
+// Uninstall removes an installed version, clearing the "current" link if
 // it pointed there.
 func Uninstall(version string) error {
 	installed, err := IsInstalled(version)
