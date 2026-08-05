@@ -46,8 +46,8 @@ Or download a prebuilt binary from the [Releases page](../../releases) for Linux
 Debian/Ubuntu users can add the project's APT repository instead, which also picks up future updates via `apt upgrade`:
 
 ```bash
-sudo curl -fsSL https://geovannyAvelar.github.io/pachyderm/pubkey.gpg -o /usr/share/keyrings/pachyderm.gpg
-echo "deb [signed-by=/usr/share/keyrings/pachyderm.gpg] https://geovannyAvelar.github.io/pachyderm stable main" | sudo tee /etc/apt/sources.list.d/pachyderm.list
+sudo curl -fsSL https://geovannyavelar.github.io/pachyderm/pubkey.gpg -o /usr/share/keyrings/pachyderm.gpg
+echo "deb [signed-by=/usr/share/keyrings/pachyderm.gpg] https://geovannyavelar.github.io/pachyderm stable main" | sudo tee /etc/apt/sources.list.d/pachyderm.list
 sudo apt update
 sudo apt install pachyderm
 ```
