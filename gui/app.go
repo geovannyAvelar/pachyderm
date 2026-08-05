@@ -10,10 +10,6 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// serverPort is the fixed port used for whichever version is running.
-// Only one version can be running at a time in this simple app.
-const serverPort = 5432
-
 // logLines is how many lines of a version's server log the app shows.
 const logLines = 200
 
@@ -45,6 +41,7 @@ type VersionState struct {
 	Initialized bool   `json:"initialized"`
 	Running     bool   `json:"running"`
 	PID         int    `json:"pid"`
+	Port        int    `json:"port"`
 }
 
 // ListInstalled returns every locally installed version with its live state.
@@ -71,12 +68,21 @@ func (a *App) ListInstalled() ([]VersionState, error) {
 			return nil, err
 		}
 
+		var port int
+		if running {
+			port, err = postgres.RunningPort(v)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		states = append(states, VersionState{
 			Version:     v,
 			Current:     v == current,
 			Initialized: initialized,
 			Running:     running,
 			PID:         pid,
+			Port:        port,
 		})
 	}
 
@@ -163,11 +169,16 @@ func (a *App) InitDataDir(version string) error {
 	return postgres.InitDB(version)
 }
 
-// StartServer starts a version's PostgreSQL server.
+// StartServer starts a version's PostgreSQL server on the configured port.
 func (a *App) StartServer(version string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return postgres.StartServer(version, serverPort)
+
+	port, err := postgres.GetPort()
+	if err != nil {
+		return err
+	}
+	return postgres.StartServer(version, port)
 }
 
 // StopServer stops a version's running PostgreSQL server.
@@ -179,7 +190,8 @@ func (a *App) StopServer(version string) error {
 
 // OpenPsql opens a terminal window with psql connected to the running server.
 func (a *App) OpenPsql(version string) error {
-	if err := requireRunning(version); err != nil {
+	port, err := runningPort(version)
+	if err != nil {
 		return err
 	}
 
@@ -188,7 +200,7 @@ func (a *App) OpenPsql(version string) error {
 		return err
 	}
 
-	return openPsqlTerminal(dir, serverPort)
+	return openPsqlTerminal(dir, port)
 }
 
 // GetLogs returns the tail of a version's server log.
@@ -210,26 +222,29 @@ func (a *App) RevealConfigFile(path string) error {
 // ListExtensions returns every extension available to a running version's
 // server, and whether it's currently installed.
 func (a *App) ListExtensions(version string) ([]postgres.Extension, error) {
-	if err := requireRunning(version); err != nil {
+	port, err := runningPort(version)
+	if err != nil {
 		return nil, err
 	}
-	return postgres.ListExtensions(version, serverPort)
+	return postgres.ListExtensions(version, port)
 }
 
 // InstallExtension enables an extension on a running version's server.
 func (a *App) InstallExtension(version, name string) error {
-	if err := requireRunning(version); err != nil {
+	port, err := runningPort(version)
+	if err != nil {
 		return err
 	}
-	return postgres.InstallExtension(version, serverPort, name)
+	return postgres.InstallExtension(version, port, name)
 }
 
 // UninstallExtension disables an extension on a running version's server.
 func (a *App) UninstallExtension(version, name string) error {
-	if err := requireRunning(version); err != nil {
+	port, err := runningPort(version)
+	if err != nil {
 		return err
 	}
-	return postgres.UninstallExtension(version, serverPort, name)
+	return postgres.UninstallExtension(version, port, name)
 }
 
 // Quit closes the app. HideWindowOnClose only hides the main window, so the
@@ -249,6 +264,17 @@ func (a *App) SetAutostartEnabled(enabled bool) error {
 	return setAutostart(enabled)
 }
 
+// GetServerPort returns the port new servers start on.
+func (a *App) GetServerPort() (int, error) {
+	return postgres.GetPort()
+}
+
+// SetServerPort changes the port new servers start on. A version that's
+// already running keeps using the port it was started with until restarted.
+func (a *App) SetServerPort(port int) error {
+	return postgres.SetPort(port)
+}
+
 func requireRunning(version string) error {
 	running, _, err := postgres.ServerStatus(version)
 	if err != nil {
@@ -258,4 +284,13 @@ func requireRunning(version string) error {
 		return fmt.Errorf("PostgreSQL %s is not running", version)
 	}
 	return nil
+}
+
+// runningPort returns the port a version's already-running server is
+// actually listening on, erroring with a friendly message if it's not up.
+func runningPort(version string) (int, error) {
+	if err := requireRunning(version); err != nil {
+		return 0, err
+	}
+	return postgres.RunningPort(version)
 }

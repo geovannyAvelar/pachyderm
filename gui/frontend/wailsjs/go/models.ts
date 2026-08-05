@@ -6,6 +6,7 @@ export namespace main {
 	    initialized: boolean;
 	    running: boolean;
 	    pid: number;
+	    port: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new VersionState(source);
@@ -18,6 +19,7 @@ export namespace main {
 	        this.initialized = source["initialized"];
 	        this.running = source["running"];
 	        this.pid = source["pid"];
+	        this.port = source["port"];
 	    }
 	}
 

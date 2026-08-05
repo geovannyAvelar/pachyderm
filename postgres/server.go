@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -251,4 +252,34 @@ func ServerStatus(version string) (running bool, pid int, err error) {
 	default:
 		return false, 0, fmt.Errorf("could not determine status of %s: %s", version, out)
 	}
+}
+
+// RunningPort returns the port a version's running server is actually
+// listening on, read from postmaster.pid (written by postgres itself on
+// startup, removed on a clean stop). This is the authoritative source: it
+// reflects the port the server was started with even if the configured
+// default port has changed since.
+func RunningPort(version string) (int, error) {
+	dataDir, err := DataDir(version)
+	if err != nil {
+		return 0, err
+	}
+
+	data, err := os.ReadFile(filepath.Join(dataDir, "postmaster.pid"))
+	if err != nil {
+		return 0, err
+	}
+
+	// Line 4 of postmaster.pid is the port number; see PostgreSQL's
+	// src/backend/utils/init/miscinit.c (CreateLockFile).
+	lines := strings.Split(string(data), "\n")
+	if len(lines) < 4 {
+		return 0, fmt.Errorf("unexpected postmaster.pid format for %s", version)
+	}
+
+	port, err := strconv.Atoi(strings.TrimSpace(lines[3]))
+	if err != nil {
+		return 0, fmt.Errorf("parsing port from postmaster.pid for %s: %w", version, err)
+	}
+	return port, nil
 }

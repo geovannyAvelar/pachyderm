@@ -264,6 +264,33 @@ select {
     font-size: 13px;
 }
 
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.settings-field-row {
+    display: flex;
+    gap: 8px;
+}
+
+.settings-field-row input {
+    font: inherit;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    width: 100px;
+}
+
+.settings-hint {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 0;
+}
+
 .extensions-list {
     flex: 1;
     min-height: 0;

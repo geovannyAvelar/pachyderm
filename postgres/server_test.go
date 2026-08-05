@@ -172,3 +172,32 @@ func TestStartServerRequiresInitializedDataDir(t *testing.T) {
 		t.Fatal("expected error when data directory is not initialized")
 	}
 }
+
+func TestRunningPort(t *testing.T) {
+	withTempHome(t)
+	const version = "16.14.0"
+
+	if _, err := RunningPort(version); err == nil {
+		t.Fatal("expected error when postmaster.pid does not exist")
+	}
+
+	dataDir, err := DataDir(version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pidFile := "4242\n" + dataDir + "\n1700000000\n5433\n/tmp\n*\n"
+	if err := os.WriteFile(filepath.Join(dataDir, "postmaster.pid"), []byte(pidFile), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	port, err := RunningPort(version)
+	if err != nil {
+		t.Fatalf("RunningPort: %v", err)
+	}
+	if port != 5433 {
+		t.Fatalf("RunningPort = %d, want 5433", port)
+	}
+}
