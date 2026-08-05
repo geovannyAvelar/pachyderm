@@ -7,7 +7,7 @@ Pachyderm ships two ways to use it:
 - **`pachyderm`** — a CLI for installing and switching versions.
 - **Pachyderm.app** — a small desktop companion app (in [`gui/`](gui/)) for starting/stopping a local server and running `psql`, similar to [Postgres.app](https://postgresapp.com/).
 
-Both share the same underlying [`postgres`](postgres/) package and install PostgreSQL binaries from [theseus-rs/postgresql-binaries](https://github.com/theseus-rs/postgresql-binaries) — no compiling from source, no system package manager required.
+Both share the same underlying [`postgres`](postgres/) package and install PostgreSQL binaries from [theseus-rs/postgresql-binaries](https://github.com/theseus-rs/postgresql-binaries) — no compiling from source, no system package manager required, and no `sudo`/administrator rights needed at any point, on any OS.
 
 ## How it works
 
@@ -28,6 +28,10 @@ Add `~/.pachyderm/current/bin` to your `PATH` once, and switching the active ver
 ```bash
 export PATH="$HOME/.pachyderm/current/bin:$PATH"
 ```
+
+Everything lives under the current user's home directory, and every operation — installing a version, switching `current`, initializing a data directory, starting a server — only ever touches that directory. Nothing is written to a system-wide location, so none of it ever needs `sudo` or an administrator prompt.
+
+**On Windows**, that mostly falls out for free, with one exception: creating a directory symlink (which is what `current` is on Linux/macOS) requires `SeCreateSymbolicLinkPrivilege`, a permission standard Windows accounts don't have unless Developer Mode is turned on. So on Windows, `current` is an [NTFS junction](https://learn.microsoft.com/en-us/windows/win32/fileio/hard-links-and-junctions) instead of a symlink — junctions only need write access to `~/.pachyderm`, not that privilege, so no elevation is required. Everything that reads `current` (`CurrentBinDir`, `CurrentVersion`, etc.) works the same either way; junctions are handled transparently by Go's standard library. The desktop app's "start at login" toggle is similarly scoped to the current user: it writes to the `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` registry key rather than registering a system service, which is also admin-free.
 
 ## Installing the CLI
 
@@ -106,6 +110,18 @@ pachyderm logs 16.14.0 -n 500    # last 500 lines
 pachyderm logs 16.14.0 -f        # follow the log as it grows
 ```
 
+### `pachyderm config <version>`
+
+Print the data directory and the paths to `postgresql.conf`, `pg_hba.conf`, and `pg_ident.conf` for an installed, initialized version — the same information Postgres.app shows in its "Server Settings" panel:
+
+```
+$ pachyderm config 16.14.0
+Data directory:   /home/user/.pachyderm/data/16.14.0
+postgresql.conf:  /home/user/.pachyderm/data/16.14.0/postgresql.conf
+pg_hba.conf:      /home/user/.pachyderm/data/16.14.0/pg_hba.conf
+pg_ident.conf:    /home/user/.pachyderm/data/16.14.0/pg_ident.conf
+```
+
 ### `pachyderm version`
 
 Print the CLI's own version (also available as `pachyderm --version`):
@@ -119,7 +135,7 @@ Release builds have the real version baked in via `-ldflags`; a build from sourc
 
 ## The desktop app
 
-`gui/` contains a [Wails](https://wails.io/) app that wraps the same install/switch logic with a UI for the parts the CLI doesn't do: initializing a data directory, starting/stopping a server, opening `psql`, and enabling extensions (`CREATE EXTENSION`) on a running server — every extension bundled with PostgreSQL's own `contrib` (pgcrypto, hstore, pg_trgm, postgres_fdw, and so on), the same set Postgres.app ships with.
+`gui/` contains a [Wails](https://wails.io/) app that wraps the same install/switch logic with a UI for the parts the CLI doesn't do: initializing a data directory, starting/stopping a server, opening `psql`, enabling extensions (`CREATE EXTENSION`) on a running server — every extension bundled with PostgreSQL's own `contrib` (pgcrypto, hstore, pg_trgm, postgres_fdw, and so on), the same set Postgres.app ships with — and a "Config" button per version that lists its `postgresql.conf`/`pg_hba.conf`/`pg_ident.conf` paths with a one-click "Reveal" to open each in the OS file manager.
 
 ```bash
 cd gui
