@@ -7,6 +7,7 @@ export namespace main {
 	    running: boolean;
 	    pid: number;
 	    port: number;
+	    configuredPort: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new VersionState(source);
@@ -20,6 +21,7 @@ export namespace main {
 	        this.running = source["running"];
 	        this.pid = source["pid"];
 	        this.port = source["port"];
+	        this.configuredPort = source["configuredPort"];
 	    }
 	}
 

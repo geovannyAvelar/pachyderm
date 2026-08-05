@@ -9,8 +9,6 @@ export function GetConfigFiles(arg1:string):Promise<postgres.ConfigFiles>;
 
 export function GetLogs(arg1:string):Promise<string>;
 
-export function GetServerPort():Promise<number>;
-
 export function InitDataDir(arg1:string):Promise<void>;
 
 export function Install(arg1:string):Promise<void>;
@@ -31,7 +29,7 @@ export function RevealConfigFile(arg1:string):Promise<void>;
 
 export function SetAutostartEnabled(arg1:boolean):Promise<void>;
 
-export function SetServerPort(arg1:number):Promise<void>;
+export function SetConfiguredPort(arg1:string,arg2:number):Promise<void>;
 
 export function StartServer(arg1:string):Promise<void>;
 

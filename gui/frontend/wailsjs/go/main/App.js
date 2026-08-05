@@ -14,10 +14,6 @@ export function GetLogs(arg1) {
   return window['go']['main']['App']['GetLogs'](arg1);
 }
 
-export function GetServerPort() {
-  return window['go']['main']['App']['GetServerPort']();
-}
-
 export function InitDataDir(arg1) {
   return window['go']['main']['App']['InitDataDir'](arg1);
 }
@@ -58,8 +54,8 @@ export function SetAutostartEnabled(arg1) {
   return window['go']['main']['App']['SetAutostartEnabled'](arg1);
 }
 
-export function SetServerPort(arg1) {
-  return window['go']['main']['App']['SetServerPort'](arg1);
+export function SetConfiguredPort(arg1, arg2) {
+  return window['go']['main']['App']['SetConfiguredPort'](arg1, arg2);
 }
 
 export function StartServer(arg1) {

@@ -264,31 +264,20 @@ select {
     font-size: 13px;
 }
 
-.settings-field {
+.port-editor {
     display: flex;
-    flex-direction: column;
     gap: 6px;
+    align-items: center;
 }
 
-.settings-field-row {
-    display: flex;
-    gap: 8px;
-}
-
-.settings-field-row input {
+.port-input {
     font: inherit;
     color: var(--text);
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--panel-border);
     border-radius: 6px;
-    padding: 8px 10px;
-    width: 100px;
-}
-
-.settings-hint {
-    color: var(--muted);
-    font-size: 12px;
-    margin: 0;
+    padding: 6px 8px;
+    width: 90px;
 }
 
 .extensions-list {

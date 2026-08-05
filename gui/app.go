@@ -36,12 +36,13 @@ func (a *App) emit(message string) {
 
 // VersionState describes one locally installed PostgreSQL version.
 type VersionState struct {
-	Version     string `json:"version"`
-	Current     bool   `json:"current"`
-	Initialized bool   `json:"initialized"`
-	Running     bool   `json:"running"`
-	PID         int    `json:"pid"`
-	Port        int    `json:"port"`
+	Version        string `json:"version"`
+	Current        bool   `json:"current"`
+	Initialized    bool   `json:"initialized"`
+	Running        bool   `json:"running"`
+	PID            int    `json:"pid"`
+	Port           int    `json:"port"`
+	ConfiguredPort int    `json:"configuredPort"`
 }
 
 // ListInstalled returns every locally installed version with its live state.
@@ -76,13 +77,19 @@ func (a *App) ListInstalled() ([]VersionState, error) {
 			}
 		}
 
+		configuredPort, err := postgres.GetPort(v)
+		if err != nil {
+			return nil, err
+		}
+
 		states = append(states, VersionState{
-			Version:     v,
-			Current:     v == current,
-			Initialized: initialized,
-			Running:     running,
-			PID:         pid,
-			Port:        port,
+			Version:        v,
+			Current:        v == current,
+			Initialized:    initialized,
+			Running:        running,
+			PID:            pid,
+			Port:           port,
+			ConfiguredPort: configuredPort,
 		})
 	}
 
@@ -169,12 +176,12 @@ func (a *App) InitDataDir(version string) error {
 	return postgres.InitDB(version)
 }
 
-// StartServer starts a version's PostgreSQL server on the configured port.
+// StartServer starts a version's PostgreSQL server on its configured port.
 func (a *App) StartServer(version string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	port, err := postgres.GetPort()
+	port, err := postgres.GetPort(version)
 	if err != nil {
 		return err
 	}
@@ -264,15 +271,11 @@ func (a *App) SetAutostartEnabled(enabled bool) error {
 	return setAutostart(enabled)
 }
 
-// GetServerPort returns the port new servers start on.
-func (a *App) GetServerPort() (int, error) {
-	return postgres.GetPort()
-}
-
-// SetServerPort changes the port new servers start on. A version that's
-// already running keeps using the port it was started with until restarted.
-func (a *App) SetServerPort(port int) error {
-	return postgres.SetPort(port)
+// SetConfiguredPort changes the port a version's server starts on. A
+// version that's already running keeps using the port it was started with
+// until restarted.
+func (a *App) SetConfiguredPort(version string, port int) error {
+	return postgres.SetPort(version, port)
 }
 
 func requireRunning(version string) error {

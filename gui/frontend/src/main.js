@@ -20,8 +20,7 @@ import {
     Version,
     GetAutostartEnabled,
     SetAutostartEnabled,
-    GetServerPort,
-    SetServerPort,
+    SetConfiguredPort,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -98,14 +97,6 @@ document.querySelector('#app').innerHTML = `
         <input type="checkbox" id="autostart-toggle" />
         <span>Start Pachyderm when you log in</span>
       </label>
-      <div class="settings-field">
-        <label for="port-input">Server port</label>
-        <div class="settings-field-row">
-          <input type="number" id="port-input" min="1024" max="65535" />
-          <button id="port-save">Save</button>
-        </div>
-        <p class="settings-hint">Applies the next time you start a server. Already-running servers keep their current port until restarted.</p>
-      </div>
       <div class="settings-error" id="settings-error" hidden></div>
     </div>
   </div>
@@ -291,15 +282,12 @@ const settingsOverlay = document.getElementById('settings-overlay');
 const settingsCloseBtn = document.getElementById('settings-close');
 const autostartToggle = document.getElementById('autostart-toggle');
 const settingsError = document.getElementById('settings-error');
-const portInput = document.getElementById('port-input');
-const portSaveBtn = document.getElementById('port-save');
 
 async function openSettings() {
     settingsError.hidden = true;
     settingsOverlay.hidden = false;
     try {
         autostartToggle.checked = await GetAutostartEnabled();
-        portInput.value = await GetServerPort();
     } catch (err) {
         settingsError.hidden = false;
         settingsError.textContent = errorMessage(err);
@@ -322,21 +310,6 @@ autostartToggle.addEventListener('change', async () => {
         settingsError.textContent = errorMessage(err);
     } finally {
         autostartToggle.disabled = false;
-    }
-});
-
-portSaveBtn.addEventListener('click', async () => {
-    const port = parseInt(portInput.value, 10);
-    settingsError.hidden = true;
-    portSaveBtn.disabled = true;
-    try {
-        await SetServerPort(port);
-        log(`Server port set to ${port}.`);
-    } catch (err) {
-        settingsError.hidden = false;
-        settingsError.textContent = errorMessage(err);
-    } finally {
-        portSaveBtn.disabled = false;
     }
 });
 
@@ -405,6 +378,10 @@ function renderInstalled(versions) {
             row.appendChild(makeButton('Use', () => runAction(() => Use(v.version), `Set ${v.version} as current`)));
         }
 
+        if (!v.running) {
+            row.appendChild(makePortEditor(v.version, v.configuredPort));
+        }
+
         if (!v.initialized) {
             row.appendChild(makeButton('Initialize', () => runAction(() => InitDataDir(v.version), `Initialize ${v.version}`)));
         } else if (v.running) {
@@ -427,6 +404,36 @@ function renderInstalled(versions) {
 
         versionsEl.appendChild(row);
     }
+}
+
+function makePortEditor(version, configuredPort) {
+    const wrap = document.createElement('div');
+    wrap.className = 'port-editor';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'port-input';
+    input.min = 1024;
+    input.max = 65535;
+    input.value = configuredPort;
+    input.title = 'Port this version starts on';
+    wrap.appendChild(input);
+
+    const saveBtn = makeButton('Save port', async () => {
+        const port = parseInt(input.value, 10);
+        saveBtn.disabled = true;
+        try {
+            await SetConfiguredPort(version, port);
+            log(`Port for ${version} set to ${port}.`);
+        } catch (err) {
+            log(`Set port for ${version}: ${errorMessage(err)}`, true);
+        } finally {
+            saveBtn.disabled = false;
+        }
+    });
+    wrap.appendChild(saveBtn);
+
+    return wrap;
 }
 
 function makeButton(label, onClick) {

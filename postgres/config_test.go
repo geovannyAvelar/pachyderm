@@ -5,7 +5,7 @@ import "testing"
 func TestGetPortDefaultsWhenUnset(t *testing.T) {
 	withTempHome(t)
 
-	port, err := GetPort()
+	port, err := GetPort("17")
 	if err != nil {
 		t.Fatalf("GetPort: %v", err)
 	}
@@ -17,11 +17,11 @@ func TestGetPortDefaultsWhenUnset(t *testing.T) {
 func TestSetPortRoundTrip(t *testing.T) {
 	withTempHome(t)
 
-	if err := SetPort(5433); err != nil {
+	if err := SetPort("17", 5433); err != nil {
 		t.Fatalf("SetPort: %v", err)
 	}
 
-	port, err := GetPort()
+	port, err := GetPort("17")
 	if err != nil {
 		t.Fatalf("GetPort: %v", err)
 	}
@@ -30,11 +30,27 @@ func TestSetPortRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSetPortIsPerVersion(t *testing.T) {
+	withTempHome(t)
+
+	if err := SetPort("16", 5433); err != nil {
+		t.Fatalf("SetPort: %v", err)
+	}
+
+	port, err := GetPort("17")
+	if err != nil {
+		t.Fatalf("GetPort: %v", err)
+	}
+	if port != DefaultPort {
+		t.Fatalf("GetPort(17) = %d, want %d (unaffected by setting 16's port)", port, DefaultPort)
+	}
+}
+
 func TestSetPortRejectsOutOfRange(t *testing.T) {
 	withTempHome(t)
 
 	for _, port := range []int{0, 1023, 65536, -1} {
-		if err := SetPort(port); err == nil {
+		if err := SetPort("17", port); err == nil {
 			t.Errorf("SetPort(%d): expected error, got nil", port)
 		}
 	}
