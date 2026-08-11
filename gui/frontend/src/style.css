@@ -264,6 +264,15 @@ select {
     font-size: 13px;
 }
 
+.about-attribution {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.settings-modal a {
+    color: var(--accent-hover);
+}
+
 .port-editor {
     display: flex;
     gap: 6px;

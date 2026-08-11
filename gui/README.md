@@ -40,6 +40,10 @@ The "Settings" panel (in the header) has a single toggle: "Start Pachyderm when 
 
 All three point at whatever binary is currently running (`os.Executable()`), so it works the same whether you're running a portable download, a `.deb` install, or a `wails dev` build. Since the app already starts hidden (see above), an autostarted launch just puts the tray icon up — no window pops open. Implemented per-OS in `autostart_linux.go` / `autostart_darwin.go` / `autostart_windows.go`, behind a shared `isAutostartEnabled`/`setAutostart` pair.
 
+## About
+
+The "About" panel (in the header) shows the app's version and licensing: the app itself is MIT-licensed, and the app/Dock/taskbar/tray icon (see [Icon](#icon) below) is attributed there too.
+
 ## Layout
 
 - [`app.go`](app.go) — the Wails-bound backend: `ListInstalled`, `ListAvailable`, `Install`, `Use`, `Uninstall`, `InitDataDir`, `StartServer`, `StopServer`, `OpenPsql`, `GetLogs`, `ListExtensions`, `InstallExtension`, `UninstallExtension`, `Quit`, `GetAutostartEnabled`, `SetAutostartEnabled`. Progress during install is streamed to the frontend via a `log` event.

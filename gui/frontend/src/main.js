@@ -31,6 +31,7 @@ document.querySelector('#app').innerHTML = `
       <p>Local PostgreSQL versions, managed.</p>
     </div>
     <span class="spacer"></span>
+    <button id="about-btn">About</button>
     <button id="settings-btn">Settings</button>
     <button class="danger" id="quit-btn">Quit</button>
   </header>
@@ -83,6 +84,22 @@ document.querySelector('#app').innerHTML = `
       </div>
       <input type="text" class="search-input" id="extensions-search" placeholder="Search extensions..." />
       <div class="extensions-list" id="extensions-body"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="about-overlay" hidden>
+    <div class="modal settings-modal">
+      <div class="modal-header">
+        <h2>About Pachyderm</h2>
+        <span class="spacer"></span>
+        <button id="about-close">Close</button>
+      </div>
+      <p>🐘 Pachyderm <span id="about-version"></span></p>
+      <p>Local PostgreSQL versions, managed.</p>
+      <p>Licensed under the <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a>.</p>
+      <p class="about-attribution">The app, Dock/taskbar, and tray icon use the 🐘 elephant emoji from Google's
+        <a href="https://github.com/googlefonts/noto-emoji" target="_blank" rel="noopener">Noto Emoji</a>,
+        licensed under the SIL Open Font License 1.1 / Apache License 2.0.</p>
     </div>
   </div>
 
@@ -278,6 +295,21 @@ extensionsRefreshBtn.addEventListener('click', refreshExtensions);
 extensionsCloseBtn.addEventListener('click', closeExtensions);
 extensionsSearch.addEventListener('input', renderFilteredExtensions);
 
+const aboutOverlay = document.getElementById('about-overlay');
+const aboutCloseBtn = document.getElementById('about-close');
+const aboutVersionEl = document.getElementById('about-version');
+
+function openAbout() {
+    aboutOverlay.hidden = false;
+}
+
+function closeAbout() {
+    aboutOverlay.hidden = true;
+}
+
+document.getElementById('about-btn').addEventListener('click', openAbout);
+aboutCloseBtn.addEventListener('click', closeAbout);
+
 const settingsOverlay = document.getElementById('settings-overlay');
 const settingsCloseBtn = document.getElementById('settings-close');
 const autostartToggle = document.getElementById('autostart-toggle');
@@ -469,6 +501,7 @@ EventsOn('log', (message) => log(message));
 
 Version().then((v) => {
     appVersionEl.textContent = `v${v}`;
+    aboutVersionEl.textContent = `v${v}`;
 });
 
 refreshAvailable();
