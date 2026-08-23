@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,24 @@ func DataDir(version string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(base, "data", version), nil
+}
+
+// maxSocketPathLen is a conservative bound on a Unix-domain socket path,
+// comfortably under the kernel limit on every platform this runs on (108
+// bytes on Linux, 104 on macOS/BSD) even after postgres appends its
+// ".s.PGSQL.<port>" filename.
+const maxSocketPathLen = 90
+
+// SocketDir returns the directory a version's server listens for Unix-domain
+// socket connections in. Unlike the Debian-style /var/run/postgresql, this
+// lives entirely under the user's home directory, so no root/admin rights
+// are ever needed to create or write to it.
+func SocketDir(version string) (string, error) {
+	base, err := HomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, "run", version), nil
 }
 
 // LogFile returns the server log file for a version.
@@ -155,9 +174,36 @@ func StartServer(version string, port int) error {
 		return err
 	}
 
+	options := fmt.Sprintf("-p %d -h 127.0.0.1", port)
+
+	// Unix-domain sockets aren't supported by PostgreSQL on Windows, so this
+	// is additive everywhere else rather than a replacement for the TCP
+	// listener above: it gives psql (or anything else) a socket to connect
+	// through without going over loopback, entirely under the user's own
+	// home directory instead of the root-owned /var/run/postgresql.
+	if runtime.GOOS != "windows" {
+		socketDir, err := SocketDir(version)
+		if err != nil {
+			return err
+		}
+		// The kernel caps a Unix-domain socket path at 108 bytes on Linux, 104
+		// on macOS/BSD, including the ".s.PGSQL.<port>" filename postgres
+		// appends and a null terminator. A deeply nested $HOME can blow past
+		// that (confirmed: PostgreSQL then refuses to start at all, even over
+		// TCP), so skip -k rather than risk it -- falling back to TCP-only,
+		// exactly today's behavior, is preferable to StartServer failing.
+		socketPath := filepath.Join(socketDir, fmt.Sprintf(".s.PGSQL.%d", port))
+		if len(socketPath) <= maxSocketPathLen {
+			if err := os.MkdirAll(socketDir, 0o700); err != nil {
+				return err
+			}
+			options += " -k " + socketDir
+		}
+	}
+
 	out, err := exec.Command(
 		pgCtl, "-D", dataDir, "-l", logFile, "-w",
-		"-o", fmt.Sprintf("-p %d -h 127.0.0.1", port),
+		"-o", options,
 		"start",
 	).CombinedOutput()
 	if err != nil {

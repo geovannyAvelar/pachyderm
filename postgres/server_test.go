@@ -173,6 +173,24 @@ func TestStartServerRequiresInitializedDataDir(t *testing.T) {
 	}
 }
 
+func TestSocketDir(t *testing.T) {
+	withTempHome(t)
+	const version = "16.14.0"
+
+	home, err := HomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir, err := SocketDir(version)
+	if err != nil {
+		t.Fatalf("SocketDir: %v", err)
+	}
+	if want := filepath.Join(home, "run", version); dir != want {
+		t.Errorf("SocketDir = %q, want %q", dir, want)
+	}
+}
+
 func TestRunningPort(t *testing.T) {
 	withTempHome(t)
 	const version = "16.14.0"
