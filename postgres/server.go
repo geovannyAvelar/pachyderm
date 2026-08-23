@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,10 +23,8 @@ func DataDir(version string) (string, error) {
 	return filepath.Join(base, "data", version), nil
 }
 
-// maxSocketPathLen is a conservative bound on a Unix-domain socket path,
-// comfortably under the kernel limit on every platform this runs on (108
-// bytes on Linux, 104 on macOS/BSD) even after postgres appends its
-// ".s.PGSQL.<port>" filename.
+// maxSocketPathLen is a conservative bound on a Unix-domain socket path; see
+// fitsSocketPath.
 const maxSocketPathLen = 90
 
 // SocketDir returns the directory a version's server listens for Unix-domain
@@ -38,6 +37,54 @@ func SocketDir(version string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(base, "run", version), nil
+}
+
+// socketConnectDir returns the directory to hand postgres's -k flag (or a
+// client's -h) for version's Unix-domain socket at port, creating a short
+// symlink under the OS temp directory if the real SocketDir path is too
+// long for the kernel's socket path limit. bind()/connect() check the
+// literal path they're given, not where a symlink resolves to, so this
+// works around the limit without moving the socket file itself -- a deeply
+// nested $HOME no longer has to fall back to TCP-only. ok is false only if
+// even that symlink path doesn't fit, which would need an unusually deep OS
+// temp directory.
+func socketConnectDir(version string, port int) (dir string, ok bool, err error) {
+	realDir, err := SocketDir(version)
+	if err != nil {
+		return "", false, err
+	}
+	if err := os.MkdirAll(realDir, 0o700); err != nil {
+		return "", false, err
+	}
+
+	if fitsSocketPath(realDir, port) {
+		return realDir, true, nil
+	}
+
+	h := fnv.New32a()
+	h.Write([]byte(realDir))
+	link := filepath.Join(os.TempDir(), fmt.Sprintf("pachyderm-%x", h.Sum32()))
+
+	if target, err := os.Readlink(link); err != nil || target != realDir {
+		os.Remove(link)
+		if err := os.Symlink(realDir, link); err != nil {
+			return "", false, err
+		}
+	}
+
+	if fitsSocketPath(link, port) {
+		return link, true, nil
+	}
+	return "", false, nil
+}
+
+// fitsSocketPath reports whether dir is short enough that postgres's
+// ".s.PGSQL.<port>" socket file inside it stays under the kernel's
+// Unix-domain socket path limit -- 108 bytes on Linux, 104 on macOS/BSD,
+// both including a null terminator. maxSocketPathLen stays comfortably
+// under either.
+func fitsSocketPath(dir string, port int) bool {
+	return len(filepath.Join(dir, fmt.Sprintf(".s.PGSQL.%d", port))) <= maxSocketPathLen
 }
 
 // LogFile returns the server log file for a version.
@@ -182,22 +229,10 @@ func StartServer(version string, port int) error {
 	// through without going over loopback, entirely under the user's own
 	// home directory instead of the root-owned /var/run/postgresql.
 	if runtime.GOOS != "windows" {
-		socketDir, err := SocketDir(version)
-		if err != nil {
+		if dir, ok, err := socketConnectDir(version, port); err != nil {
 			return err
-		}
-		// The kernel caps a Unix-domain socket path at 108 bytes on Linux, 104
-		// on macOS/BSD, including the ".s.PGSQL.<port>" filename postgres
-		// appends and a null terminator. A deeply nested $HOME can blow past
-		// that (confirmed: PostgreSQL then refuses to start at all, even over
-		// TCP), so skip -k rather than risk it -- falling back to TCP-only,
-		// exactly today's behavior, is preferable to StartServer failing.
-		socketPath := filepath.Join(socketDir, fmt.Sprintf(".s.PGSQL.%d", port))
-		if len(socketPath) <= maxSocketPathLen {
-			if err := os.MkdirAll(socketDir, 0o700); err != nil {
-				return err
-			}
-			options += " -k " + socketDir
+		} else if ok {
+			options += " -k " + dir
 		}
 	}
 

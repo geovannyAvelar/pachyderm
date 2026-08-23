@@ -1,9 +1,12 @@
 package postgres
 
 import (
+	"fmt"
+	"hash/fnv"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -188,6 +191,114 @@ func TestSocketDir(t *testing.T) {
 	}
 	if want := filepath.Join(home, "run", version); dir != want {
 		t.Errorf("SocketDir = %q, want %q", dir, want)
+	}
+}
+
+func TestSocketConnectDirShortPath(t *testing.T) {
+	withTempHome(t)
+	const version = "16.14.0"
+
+	realDir, err := SocketDir(version)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir, ok, err := socketConnectDir(version, 5432)
+	if err != nil {
+		t.Fatalf("socketConnectDir: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok=true for a short path")
+	}
+	if dir != realDir {
+		t.Errorf("dir = %q, want the real SocketDir %q (no symlink needed)", dir, realDir)
+	}
+	if _, err := os.Stat(realDir); err != nil {
+		t.Errorf("expected SocketDir to be created: %v", err)
+	}
+}
+
+func TestSocketConnectDirLongPathUsesSymlink(t *testing.T) {
+	withTempHome(t)
+	// Long enough that HomeDir()/run/<version> exceeds maxSocketPathLen
+	// regardless of where the test's temp $HOME happens to live.
+	version := strings.Repeat("v", 120)
+
+	realDir, err := SocketDir(version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fitsSocketPath(realDir, 5432) {
+		t.Fatalf("test setup bug: realDir %q unexpectedly fits", realDir)
+	}
+
+	dir, ok, err := socketConnectDir(version, 5432)
+	if err != nil {
+		t.Fatalf("socketConnectDir: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok=true via a short symlink")
+	}
+	if dir == realDir {
+		t.Fatal("expected a symlink path, not the (too long) real dir")
+	}
+	if !fitsSocketPath(dir, 5432) {
+		t.Errorf("returned dir %q still doesn't fit", dir)
+	}
+	t.Cleanup(func() { os.Remove(dir) })
+
+	target, err := os.Readlink(dir)
+	if err != nil {
+		t.Fatalf("expected %q to be a symlink: %v", dir, err)
+	}
+	if target != realDir {
+		t.Errorf("symlink target = %q, want %q", target, realDir)
+	}
+
+	// Calling again should reuse the existing, already-correct symlink
+	// rather than erroring or creating a different one.
+	dir2, ok2, err := socketConnectDir(version, 5432)
+	if err != nil || !ok2 {
+		t.Fatalf("second call: dir=%q ok=%v err=%v", dir2, ok2, err)
+	}
+	if dir2 != dir {
+		t.Errorf("second call returned %q, want the same symlink %q", dir2, dir)
+	}
+}
+
+func TestSocketConnectDirReplacesStaleSymlink(t *testing.T) {
+	withTempHome(t)
+	version := strings.Repeat("v", 120)
+
+	realDir, err := SocketDir(version)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h := fnv.New32a()
+	h.Write([]byte(realDir))
+	link := filepath.Join(os.TempDir(), fmt.Sprintf("pachyderm-%x", h.Sum32()))
+	t.Cleanup(func() { os.Remove(link) })
+
+	stale := t.TempDir()
+	if err := os.Symlink(stale, link); err != nil {
+		t.Fatal(err)
+	}
+
+	dir, ok, err := socketConnectDir(version, 5432)
+	if err != nil || !ok {
+		t.Fatalf("dir=%q ok=%v err=%v", dir, ok, err)
+	}
+	if dir != link {
+		t.Fatalf("dir = %q, want the fixed-up symlink %q", dir, link)
+	}
+
+	target, err := os.Readlink(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target != realDir {
+		t.Errorf("stale symlink was not replaced: target = %q, want %q", target, realDir)
 	}
 }
 
