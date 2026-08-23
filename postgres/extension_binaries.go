@@ -12,6 +12,10 @@ import (
 // https://github.com/geovannyAvelar/postgis-binaries.
 const postgisBinariesRepo = "geovannyAvelar/postgis-binaries"
 
+// DefaultPostGISVersion is the PostGIS version series pachyderm currently
+// publishes binaries for.
+const DefaultPostGISVersion = "3.5"
+
 // FetchPostGISReleaseTags returns every PostGIS release tag published in
 // postgisBinariesRepo, newest first.
 func FetchPostGISReleaseTags() ([]string, error) {

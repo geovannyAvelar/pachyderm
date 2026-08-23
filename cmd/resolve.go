@@ -38,3 +38,28 @@ func resolveInstalledVersion(version string) (string, error) {
 		return "", fmt.Errorf("version %s is ambiguous, matches: %s", version, strings.Join(matches, ", "))
 	}
 }
+
+// resolveRunningVersion resolves version the same way resolveInstalledVersion
+// does, and additionally requires the server to be running, returning the
+// port it's actually listening on.
+func resolveRunningVersion(version string) (string, int, error) {
+	resolved, err := resolveInstalledVersion(version)
+	if err != nil {
+		return "", 0, err
+	}
+
+	running, _, err := postgres.ServerStatus(resolved)
+	if err != nil {
+		return "", 0, err
+	}
+	if !running {
+		return "", 0, fmt.Errorf("PostgreSQL %s is not running", resolved)
+	}
+
+	port, err := postgres.RunningPort(resolved)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return resolved, port, nil
+}
