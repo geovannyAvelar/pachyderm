@@ -144,7 +144,24 @@ func binPath(version, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "bin", name), nil
+
+	return filepath.Join(dir, "bin", binName(runtime.GOOS, name)), nil
+}
+
+// binName appends the platform executable extension to name. Go's
+// exec.Command only does PATHEXT/.exe resolution for a bare command name
+// with no path separators -- since binPath always builds a full path,
+// Windows needs the extension spelled out explicitly, or CreateProcess
+// fails to find the file at all (theseus-rs ships pg_ctl.exe, not pg_ctl).
+// This was silently masked before Go 1.22, which used to add ".exe"
+// implicitly for absolute paths too; that was removed for security
+// reasons (see https://go.dev/issue/66586), so this project's Go 1.24+
+// toolchain needs it done explicitly.
+func binName(goos, name string) string {
+	if goos == "windows" {
+		return name + ".exe"
+	}
+	return name
 }
 
 // IsDataDirInitialized reports whether a version's data directory has already

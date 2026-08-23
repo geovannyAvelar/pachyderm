@@ -196,6 +196,23 @@ func TestSocketDir(t *testing.T) {
 	}
 }
 
+func TestBinName(t *testing.T) {
+	cases := []struct {
+		goos, name, want string
+	}{
+		{"windows", "pg_ctl", "pg_ctl.exe"},
+		{"windows", "psql", "psql.exe"},
+		{"linux", "pg_ctl", "pg_ctl"},
+		{"darwin", "pg_ctl", "pg_ctl"},
+	}
+
+	for _, c := range cases {
+		if got := binName(c.goos, c.name); got != c.want {
+			t.Errorf("binName(%q, %q) = %q, want %q", c.goos, c.name, got, c.want)
+		}
+	}
+}
+
 func TestInitDBCreatesPostgresSuperuser(t *testing.T) {
 	withTempHome(t)
 	const version = "16.14.0"
