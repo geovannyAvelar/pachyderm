@@ -16,6 +16,7 @@ import {
     ListExtensions,
     InstallExtension,
     UninstallExtension,
+    DownloadPostGIS,
     Quit,
     Version,
     GetAutostartEnabled,
@@ -79,6 +80,7 @@ document.querySelector('#app').innerHTML = `
       <div class="modal-header">
         <h2 id="extensions-title">Extensions</h2>
         <span class="spacer"></span>
+        <button id="extensions-get-postgis">Get PostGIS</button>
         <button id="extensions-refresh">Refresh</button>
         <button id="extensions-close">Close</button>
       </div>
@@ -211,6 +213,11 @@ const extensionsBody = document.getElementById('extensions-body');
 const extensionsRefreshBtn = document.getElementById('extensions-refresh');
 const extensionsCloseBtn = document.getElementById('extensions-close');
 const extensionsSearch = document.getElementById('extensions-search');
+const extensionsGetPostgisBtn = document.getElementById('extensions-get-postgis');
+
+// The PostGIS version series pachyderm currently publishes binaries for.
+// See https://github.com/geovannyAvelar/postgis-binaries.
+const POSTGIS_VERSION = '3.5';
 
 let extensionsVersion = null;
 let extensionsCache = [];
@@ -294,6 +301,18 @@ function closeExtensions() {
 extensionsRefreshBtn.addEventListener('click', refreshExtensions);
 extensionsCloseBtn.addEventListener('click', closeExtensions);
 extensionsSearch.addEventListener('input', renderFilteredExtensions);
+
+extensionsGetPostgisBtn.addEventListener('click', () => {
+    if (!extensionsVersion) return;
+    extensionsGetPostgisBtn.disabled = true;
+    runExtensionAction(
+        () => DownloadPostGIS(extensionsVersion, POSTGIS_VERSION),
+        'postgis',
+        `Download PostGIS ${POSTGIS_VERSION}`,
+    ).finally(() => {
+        extensionsGetPostgisBtn.disabled = false;
+    });
+});
 
 const aboutOverlay = document.getElementById('about-overlay');
 const aboutCloseBtn = document.getElementById('about-close');

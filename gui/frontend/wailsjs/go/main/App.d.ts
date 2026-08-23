@@ -3,6 +3,8 @@
 import {postgres} from '../models';
 import {main} from '../models';
 
+export function DownloadPostGIS(arg1:string,arg2:string):Promise<void>;
+
 export function GetAutostartEnabled():Promise<boolean>;
 
 export function GetConfigFiles(arg1:string):Promise<postgres.ConfigFiles>;

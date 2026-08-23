@@ -254,6 +254,22 @@ func (a *App) UninstallExtension(version, name string) error {
 	return postgres.UninstallExtension(version, port, name)
 }
 
+// DownloadPostGIS fetches a prebuilt PostGIS binary and overlays it onto an
+// installed PostgreSQL version, making it visible to ListExtensions.
+// Progress is streamed to the frontend via "log" events, same as Install.
+func (a *App) DownloadPostGIS(version, postgisVersion string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.emit(fmt.Sprintf("Looking up PostGIS %s releases...", postgisVersion))
+	if err := postgres.InstallPostGISBinary(version, postgisVersion); err != nil {
+		return fmt.Errorf("failed to install PostGIS: %w", err)
+	}
+	a.emit(fmt.Sprintf("Installed PostGIS %s for PostgreSQL %s.", postgisVersion, version))
+
+	return nil
+}
+
 // Quit closes the app. HideWindowOnClose only hides the main window, so the
 // tray menu's "Quit Pachyderm" and this are the only ways to actually exit.
 func (a *App) Quit() {

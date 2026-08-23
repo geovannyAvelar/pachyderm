@@ -21,10 +21,15 @@ var linkNextRe = regexp.MustCompile(`<([^>]+)>;\s*rel="next"`)
 
 // FetchReleaseTags returns every release tag published in releasesRepo, newest first.
 func FetchReleaseTags() ([]string, error) {
+	return fetchReleaseTags(releasesRepo)
+}
+
+// fetchReleaseTags returns every release tag published in repo, newest first.
+func fetchReleaseTags(repo string) ([]string, error) {
 	var tags []string
 
 	client := &http.Client{}
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100", releasesRepo)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100", repo)
 
 	for page := 0; url != "" && page < 30; page++ {
 		req, err := http.NewRequest(http.MethodGet, url, nil)
