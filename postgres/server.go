@@ -6,6 +6,7 @@ import (
 	"hash/fnv"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -189,6 +190,43 @@ func InitDB(version string) error {
 	if err != nil {
 		os.RemoveAll(dataDir)
 		return fmt.Errorf("initdb failed: %w\n%s", err, out)
+	}
+
+	if err := ensurePostgresSuperuser(version, dataDir); err != nil {
+		os.RemoveAll(dataDir)
+		return err
+	}
+
+	return nil
+}
+
+// ensurePostgresSuperuser adds a "postgres" superuser role on top of
+// initdb's own bootstrap superuser, which initdb names after whichever OS
+// user ran it rather than "postgres". Without this, connecting as
+// "postgres" -- the convention nearly every tool, tutorial, and the
+// official Docker image assumes -- fails with "role postgres does not
+// exist", even though the cluster works fine otherwise.
+func ensurePostgresSuperuser(version, dataDir string) error {
+	current, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("determining current user: %w", err)
+	}
+	if current.Username == "postgres" {
+		return nil // initdb's bootstrap superuser already is named "postgres"
+	}
+
+	postgres, err := binPath(version, "postgres")
+	if err != nil {
+		return err
+	}
+
+	// --single (single-user mode) runs one command directly against the
+	// data directory with no networking involved, so it needs no port and
+	// can't collide with an already-running server.
+	cmd := exec.Command(postgres, "--single", "-D", dataDir, "postgres")
+	cmd.Stdin = strings.NewReader("CREATE ROLE postgres LOGIN SUPERUSER;\n")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("creating postgres superuser role: %w\n%s", err, out)
 	}
 
 	return nil

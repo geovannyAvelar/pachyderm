@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"os"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -53,6 +54,7 @@ done
 mkdir -p "$dir"
 echo "16" > "$dir/PG_VERSION"
 `)
+	writeFakeBin(t, version, "postgres", `exit 0`)
 
 	if initialized, err := IsDataDirInitialized(version); err != nil || initialized {
 		t.Fatalf("expected uninitialized, got initialized=%v err=%v", initialized, err)
@@ -191,6 +193,54 @@ func TestSocketDir(t *testing.T) {
 	}
 	if want := filepath.Join(home, "run", version); dir != want {
 		t.Errorf("SocketDir = %q, want %q", dir, want)
+	}
+}
+
+func TestInitDBCreatesPostgresSuperuser(t *testing.T) {
+	withTempHome(t)
+	const version = "16.14.0"
+
+	writeFakeBin(t, version, "initdb", `
+dir=""
+prevflag=""
+for arg in "$@"; do
+  if [ "$prevflag" = "-D" ]; then
+    dir="$arg"
+  fi
+  prevflag="$arg"
+done
+mkdir -p "$dir"
+echo "16" > "$dir/PG_VERSION"
+`)
+
+	captureFile := filepath.Join(t.TempDir(), "postgres-invocation")
+	writeFakeBin(t, version, "postgres", `
+echo "$@" > `+captureFile+`
+cat >> `+captureFile+`
+exit 0
+`)
+
+	if err := InitDB(version); err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+
+	captured, err := os.ReadFile(captureFile)
+	if err != nil {
+		// The test process is virtually never running as a user actually
+		// named "postgres", but skip rather than fail if it somehow is --
+		// ensurePostgresSuperuser correctly does nothing in that case.
+		if current, uerr := user.Current(); uerr == nil && current.Username == "postgres" {
+			t.Skip("test running as the postgres user; no superuser bootstrap expected")
+		}
+		t.Fatalf("expected the fake postgres binary to run: %v", err)
+	}
+
+	got := string(captured)
+	if !strings.Contains(got, "--single") {
+		t.Errorf("expected --single (single-user mode) in invocation, got: %q", got)
+	}
+	if !strings.Contains(got, "CREATE ROLE postgres") {
+		t.Errorf("expected a CREATE ROLE postgres statement on stdin, got: %q", got)
 	}
 }
 
