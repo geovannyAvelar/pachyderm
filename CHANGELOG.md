@@ -5,6 +5,34 @@ All notable changes to this project are documented in this file, based on
 a bespoke `major.minor.patch`-shaped version number rather than Semantic
 Versioning proper.
 
+## [0.0.20] - 2026-09-10
+
+### Added
+
+- Unix-domain socket support for connecting to PostgreSQL servers, with no
+  root/admin rights required, falling back to TCP-only on Windows or when
+  the socket path would exceed the kernel's length limit.
+- Extensions panel: Installed and Available tabs, with search scoped to
+  the active tab.
+
+### Changed
+
+- PostGIS now appears in the extensions list like any other extension,
+  with a normal Install action that downloads the binary automatically,
+  instead of a separate "Get PostGIS" button.
+- CI now auto-publishes an unstable release on every push to main.
+
+### Fixed
+
+- `role "postgres" does not exist` when connecting as `-U postgres`: the
+  role is now created on already-initialized data directories too (fixed
+  up automatically the next time the server starts), not just newly
+  initialized ones.
+- Windows: postgres binaries are invoked with the `.exe` suffix explicitly,
+  fixing lookup failures under this project's Go 1.24+ toolchain.
+- Bumped `github.com/labstack/echo/v4` to 4.15.3 in the GUI, fixing a
+  high-severity vulnerability.
+
 ## [0.0.19] - 2026-08-23
 
 ### Added
