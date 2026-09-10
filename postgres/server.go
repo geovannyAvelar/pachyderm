@@ -222,7 +222,9 @@ func InitDB(version string) error {
 // user ran it rather than "postgres". Without this, connecting as
 // "postgres" -- the convention nearly every tool, tutorial, and the
 // official Docker image assumes -- fails with "role postgres does not
-// exist", even though the cluster works fine otherwise.
+// exist", even though the cluster works fine otherwise. It is idempotent,
+// so StartServer can call it on every launch to fix up data directories
+// that were initialized before this role was introduced.
 func ensurePostgresSuperuser(version, dataDir string) error {
 	current, err := user.Current()
 	if err != nil {
@@ -239,10 +241,12 @@ func ensurePostgresSuperuser(version, dataDir string) error {
 
 	// --single (single-user mode) runs one command directly against the
 	// data directory with no networking involved, so it needs no port and
-	// can't collide with an already-running server.
+	// can't collide with an already-running server. It does mean this must
+	// run while no server is up against dataDir.
 	cmd := exec.Command(postgres, "--single", "-D", dataDir, "postgres")
 	cmd.Stdin = strings.NewReader("CREATE ROLE postgres LOGIN SUPERUSER;\n")
-	if out, err := cmd.CombinedOutput(); err != nil {
+	out, err := cmd.CombinedOutput()
+	if err != nil && !strings.Contains(string(out), "already exists") {
 		return fmt.Errorf("creating postgres superuser role: %w\n%s", err, out)
 	}
 
@@ -273,6 +277,13 @@ func StartServer(version string, port int) error {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
+		return err
+	}
+
+	// Data directories initialized before InitDB started creating this role
+	// (or ones that had it dropped) don't have it, so fix that up on every
+	// start rather than only at InitDB time.
+	if err := ensurePostgresSuperuser(version, dataDir); err != nil {
 		return err
 	}
 

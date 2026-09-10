@@ -178,6 +178,76 @@ func TestStartServerRequiresInitializedDataDir(t *testing.T) {
 	}
 }
 
+func TestStartServerCreatesPostgresSuperuserOnExistingDataDir(t *testing.T) {
+	withTempHome(t)
+	const version = "16.14.0"
+
+	dataDir, err := DataDir(version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataDir, "PG_VERSION"), []byte("16"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	captureFile := filepath.Join(t.TempDir(), "postgres-invocation")
+	writeFakeBin(t, version, "postgres", `
+echo "$@" > `+captureFile+`
+cat >> `+captureFile+`
+exit 0
+`)
+	writeFakeBin(t, version, "pg_ctl", `exit 0`)
+
+	if err := StartServer(version, 5432); err != nil {
+		t.Fatalf("StartServer: %v", err)
+	}
+
+	captured, err := os.ReadFile(captureFile)
+	if err != nil {
+		if current, uerr := user.Current(); uerr == nil && current.Username == "postgres" {
+			t.Skip("test running as the postgres user; no superuser bootstrap expected")
+		}
+		t.Fatalf("expected the fake postgres binary to run: %v", err)
+	}
+
+	got := string(captured)
+	if !strings.Contains(got, "--single") {
+		t.Errorf("expected --single (single-user mode) in invocation, got: %q", got)
+	}
+	if !strings.Contains(got, "CREATE ROLE postgres") {
+		t.Errorf("expected a CREATE ROLE postgres statement on stdin, got: %q", got)
+	}
+}
+
+func TestEnsurePostgresSuperuserToleratesAlreadyExisting(t *testing.T) {
+	withTempHome(t)
+	const version = "16.14.0"
+
+	dataDir, err := DataDir(version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	writeFakeBin(t, version, "postgres", `
+echo 'ERROR:  role "postgres" already exists' >&2
+exit 1
+`)
+
+	if current, uerr := user.Current(); uerr == nil && current.Username == "postgres" {
+		t.Skip("test running as the postgres user; ensurePostgresSuperuser is a no-op")
+	}
+
+	if err := ensurePostgresSuperuser(version, dataDir); err != nil {
+		t.Fatalf("expected 'already exists' to be tolerated, got: %v", err)
+	}
+}
+
 func TestSocketDir(t *testing.T) {
 	withTempHome(t)
 	const version = "16.14.0"
