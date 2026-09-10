@@ -83,6 +83,10 @@ document.querySelector('#app').innerHTML = `
         <button id="extensions-refresh">Refresh</button>
         <button id="extensions-close">Close</button>
       </div>
+      <div class="tab-row" id="extensions-tabs">
+        <button type="button" class="tab active" id="extensions-tab-installed">Installed</button>
+        <button type="button" class="tab" id="extensions-tab-available">Available</button>
+      </div>
       <input type="text" class="search-input" id="extensions-search" placeholder="Search extensions..." />
       <div class="extensions-list" id="extensions-body"></div>
     </div>
@@ -212,6 +216,8 @@ const extensionsBody = document.getElementById('extensions-body');
 const extensionsRefreshBtn = document.getElementById('extensions-refresh');
 const extensionsCloseBtn = document.getElementById('extensions-close');
 const extensionsSearch = document.getElementById('extensions-search');
+const extensionsTabInstalled = document.getElementById('extensions-tab-installed');
+const extensionsTabAvailable = document.getElementById('extensions-tab-available');
 
 // The PostGIS version series pachyderm currently publishes binaries for.
 // See https://github.com/geovannyAvelar/postgis-binaries.
@@ -220,6 +226,14 @@ const POSTGIS_COMMENT = 'PostGIS geometry and geography spatial types and functi
 
 let extensionsVersion = null;
 let extensionsCache = [];
+let extensionsTab = 'installed';
+
+function setExtensionsTab(tab) {
+    extensionsTab = tab;
+    extensionsTabInstalled.classList.toggle('active', tab === 'installed');
+    extensionsTabAvailable.classList.toggle('active', tab === 'available');
+    renderFilteredExtensions();
+}
 
 async function refreshExtensions() {
     if (!extensionsVersion) return;
@@ -243,17 +257,23 @@ async function refreshExtensions() {
 
 function renderFilteredExtensions() {
     const query = extensionsSearch.value.trim().toLowerCase();
+    const byTab = extensionsCache.filter((e) => (extensionsTab === 'installed' ? e.installed : !e.installed));
     const filtered = query
-        ? extensionsCache.filter((e) => e.name.toLowerCase().includes(query) || e.comment.toLowerCase().includes(query))
-        : extensionsCache;
-    renderExtensions(filtered);
+        ? byTab.filter((e) => e.name.toLowerCase().includes(query) || e.comment.toLowerCase().includes(query))
+        : byTab;
+    renderExtensions(filtered, query);
 }
 
-function renderExtensions(extensions) {
+function renderExtensions(extensions, query) {
     extensionsBody.innerHTML = '';
 
     if (extensions.length === 0) {
-        const message = extensionsCache.length === 0 ? 'No extensions available.' : 'No extensions match your search.';
+        let message = extensionsTab === 'installed' ? 'No extensions installed.' : 'No extensions available.';
+        if (extensionsCache.length === 0) {
+            message = 'No extensions available.';
+        } else if (query) {
+            message = 'No extensions match your search.';
+        }
         extensionsBody.innerHTML = `<div class="empty">${message}</div>`;
         return;
     }
@@ -298,6 +318,7 @@ function openExtensions(version) {
     extensionsVersion = version;
     extensionsTitle.textContent = `Extensions — PostgreSQL ${version}`;
     extensionsSearch.value = '';
+    setExtensionsTab('installed');
     extensionsOverlay.hidden = false;
     refreshExtensions();
 }
@@ -311,6 +332,8 @@ function closeExtensions() {
 extensionsRefreshBtn.addEventListener('click', refreshExtensions);
 extensionsCloseBtn.addEventListener('click', closeExtensions);
 extensionsSearch.addEventListener('input', renderFilteredExtensions);
+extensionsTabInstalled.addEventListener('click', () => setExtensionsTab('installed'));
+extensionsTabAvailable.addEventListener('click', () => setExtensionsTab('available'));
 
 async function installPostGIS(version) {
     await DownloadPostGIS(version, POSTGIS_VERSION);

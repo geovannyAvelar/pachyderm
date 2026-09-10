@@ -173,6 +173,31 @@ select {
     padding: 6px 10px;
 }
 
+.tab-row {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.tab {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    padding: 8px 4px;
+    color: var(--muted);
+}
+
+.tab:hover:not(:disabled) {
+    background: transparent;
+    color: var(--text);
+}
+
+.tab.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+}
+
 .search-input {
     font: inherit;
     color: var(--text);
