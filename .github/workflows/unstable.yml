@@ -1,0 +1,51 @@
+name: Unstable Build
+
+# Publishes an unstable release for every commit landing on main, so a
+# build is always available between stable tags. Only one unstable release
+# exists at a time: the previous one is deleted before the new one is
+# published, so old unstable artifacts don't pile up in Releases.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: unstable-build
+  cancel-in-progress: false
+
+jobs:
+  publish-unstable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute unstable tag name
+        id: version
+        run: |
+          # Base the version on the newest *stable* tag (vX.Y.Z, no
+          # -unstable suffix), bumped one patch -- e.g. v0.0.19 stable
+          # produces v0.0.20-unstable.<sha> until v0.0.20 itself ships.
+          latest_stable=$(git tag --list 'v*' | grep -Ev -- '-unstable\.' | sort -V | tail -1)
+          base=${latest_stable#v}
+          IFS='.' read -r major minor patch <<< "$base"
+          sha=$(git rev-parse --short HEAD)
+          echo "tag=v${major}.${minor}.$((patch + 1))-unstable.${sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Delete previous unstable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for tag in $(gh api "repos/${{ github.repository }}/releases" --jq '.[] | select(.tag_name | test("-unstable\\.")) | .tag_name'); do
+            gh release delete "$tag" --yes --cleanup-tag --repo "${{ github.repository }}" || true
+          done
+
+      - name: Trigger release build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run release.yml --repo "${{ github.repository }}" --ref main -f tag_name="${{ steps.version.outputs.tag }}"

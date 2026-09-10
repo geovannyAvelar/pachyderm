@@ -4,9 +4,23 @@ on:
   push:
     tags:
       - 'v*'
+  # Lets the unstable-build workflow (push to main) kick off a build+release
+  # under a tag name it computes itself, without needing to push a git tag
+  # through GITHUB_TOKEN -- pushes made with that token don't trigger other
+  # workflows' `on: push`, but an explicit workflow_dispatch call does.
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag to create the release under (e.g. v0.0.21-unstable.abcdef1)'
+        required: true
 
 permissions:
   contents: write
+
+# Set once so every job/step can use $TAG_NAME / env.TAG_NAME instead of
+# github.ref_name, which is only meaningful for the tag-push trigger.
+env:
+  TAG_NAME: ${{ github.event.inputs.tag_name || github.ref_name }}
 
 jobs:
   build-cli:
@@ -39,14 +53,14 @@ jobs:
           CGO_ENABLED: 0
         run: |
           mkdir -p dist
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG_NAME#v}"
           go build -ldflags "-X pachyderm/cmd.version=${VERSION}" -o dist/${{ matrix.asset }} .
 
       - name: Build .deb package
         if: matrix.goos == 'linux'
         run: |
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
-          export VERSION="${GITHUB_REF_NAME#v}"
+          export VERSION="${TAG_NAME#v}"
           "$(go env GOPATH)/bin/nfpm" package -f packaging/nfpm-cli.yaml -p deb -t dist/
 
       # GitHub release assets are plain files, not archives, so the exec bit
@@ -109,7 +123,7 @@ jobs:
         # Ubuntu no longer ships libwebkit2gtk-4.0-dev; only 4.1 is available,
         # so Wails needs the webkit2_41 build tag to pkg-config against it.
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG_NAME#v}"
           wails build -tags webkit2_41 -ldflags "-X main.appVersion=${VERSION}"
 
       - name: Build GUI (windows/macos)
@@ -117,7 +131,7 @@ jobs:
         working-directory: gui
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG_NAME#v}"
           wails build -ldflags "-X main.appVersion=${VERSION}"
 
       - name: Package artifact (linux)
@@ -133,7 +147,7 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
-          export VERSION="${GITHUB_REF_NAME#v}"
+          export VERSION="${TAG_NAME#v}"
           "$(go env GOPATH)/bin/nfpm" package -f packaging/nfpm-gui.yaml -p deb -t dist/
 
       - name: Package artifact (windows)
@@ -172,14 +186,19 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.TAG_NAME }}
+          # Pin explicitly: for the workflow_dispatch trigger the tag doesn't
+          # exist yet, and action-gh-release would otherwise create it from
+          # whatever the default branch's HEAD is *when this step runs*,
+          # which can drift from the commit that was actually built above.
+          target_commitish: ${{ github.sha }}
           files: release/*
           generate_release_notes: true
           # Unstable tags (vX.Y.Z-unstable.<sha>) publish as regular
           # releases, not prereleases, but shouldn't steal the "Latest"
           # badge from the newest actual stable release.
-          make_latest: ${{ contains(github.ref_name, '-unstable.') && 'false' || 'true' }}
+          make_latest: ${{ contains(env.TAG_NAME, '-unstable.') && 'false' || 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
