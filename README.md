@@ -158,7 +158,15 @@ See [gui/README.md](gui/README.md) for Wails-specific details.
 
 ## Releases
 
-Pushing a version tag (e.g. `v0.0.1`) triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds the CLI (Linux/macOS/Windows) and the desktop app (Linux/macOS/Windows), plus `.deb` packages for both on Linux (built with [nfpm](https://nfpm.goreleaser.com/), configured in [`packaging/`](packaging/)), and publishes all eight artifacts to a GitHub Release under that tag.
+Pushing a version tag (e.g. `v0.0.20`) triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds the CLI (Linux/macOS/Windows) and the desktop app (Linux/macOS/Windows), plus `.deb` packages for both on Linux (built with [nfpm](https://nfpm.goreleaser.com/), configured in [`packaging/`](packaging/)), and publishes all eight artifacts to a GitHub Release under that tag.
+
+### Unstable builds
+
+Every push to `main` also publishes an unstable build automatically, via [`.github/workflows/unstable.yml`](.github/workflows/unstable.yml): it computes the next patch version past the latest stable tag, tags that commit `vX.Y.Z-unstable.<short-sha>`, and dispatches `release.yml` to build and publish it exactly like a real release. Only one unstable release ever exists — each run deletes the previous one first — and it's never marked "Latest" on the [Releases page](../../releases), so anything relying on the latest release (including `.../releases/latest`) keeps resolving to the newest actual stable tag.
+
+### The APT repository
+
+The `apt-repo` job in `release.yml` rebuilds the APT repository from scratch on every release — stable or unstable — from every `.deb` ever published to this repo's Releases, and republishes it to GitHub Pages. That means unstable `.deb`s are technically present in the same repository `apt` installs from. They're harmless there: [nfpm](https://nfpm.goreleaser.com/) rewrites a package's `-unstable.<sha>` version suffix to `~unstable.<sha>`, and Debian's version ordering ranks a `~` suffix below the plain version it's attached to, so e.g. `0.0.20~unstable.3cf0bd6` always sorts behind `0.0.20` once that ships. `apt install`/`apt upgrade` therefore always resolve to the newest real release, never an unstable build in between.
 
 ## Development
 
