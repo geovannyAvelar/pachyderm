@@ -176,6 +176,10 @@ jobs:
           name: ${{ github.ref_name }}
           files: release/*
           generate_release_notes: true
+          # Unstable tags (vX.Y.Z-unstable.<sha>) publish as regular
+          # releases, not prereleases, but shouldn't steal the "Latest"
+          # badge from the newest actual stable release.
+          make_latest: ${{ contains(github.ref_name, '-unstable.') && 'false' || 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
