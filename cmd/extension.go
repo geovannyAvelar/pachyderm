@@ -55,7 +55,7 @@ func init() {
 }
 
 func listExtensions(cmd *cobra.Command, args []string) error {
-	version, port, err := resolveRunningVersion(args[0])
+	version, port, err := resolveRunningVersion(args[:1])
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func listExtensions(cmd *cobra.Command, args []string) error {
 }
 
 func installExtension(cmd *cobra.Command, args []string) error {
-	version, port, err := resolveRunningVersion(args[0])
+	version, port, err := resolveRunningVersion(args[:1])
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func installExtension(cmd *cobra.Command, args []string) error {
 }
 
 func uninstallExtension(cmd *cobra.Command, args []string) error {
-	version, port, err := resolveRunningVersion(args[0])
+	version, port, err := resolveRunningVersion(args[:1])
 	if err != nil {
 		return err
 	}

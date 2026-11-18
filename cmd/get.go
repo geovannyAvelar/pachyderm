@@ -11,11 +11,14 @@ import (
 )
 
 var getCmd = &cobra.Command{
-	Use:   "get <version>",
+	Use:   "get [version]",
 	Short: "Download and install PostgreSQL",
-	Long:  `Download and install a PostgreSQL version and set it as the active version.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  getPostgres,
+	Long: `Download and install a PostgreSQL version and set it as the active version.
+
+With no version, it installs the one in $PACHYDERM_VERSION, else the one in
+the nearest .pachyderm-version or .tool-versions file.`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: getPostgres,
 }
 
 func init() {
@@ -23,7 +26,24 @@ func init() {
 }
 
 func getPostgres(cmd *cobra.Command, args []string) error {
-	version := args[0]
+	var version string
+	if len(args) > 0 {
+		version = args[0]
+	} else {
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		req, ok, err := postgres.FindProjectVersion(wd)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("no version given, and no %s or .tool-versions file found; run \"pachyderm get <version>\"", postgres.ProjectVersionFile)
+		}
+		cmd.Printf("Using PostgreSQL %s from %s.\n", req.Version, req.Source)
+		version = req.Version
+	}
 
 	target, err := postgres.Target()
 	if err != nil {

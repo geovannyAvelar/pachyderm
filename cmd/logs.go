@@ -18,10 +18,10 @@ var (
 )
 
 var logsCmd = &cobra.Command{
-	Use:   "logs <version>",
+	Use:   "logs [version]",
 	Short: "Show a PostgreSQL instance's server log",
 	Long:  `Print the server log for an installed PostgreSQL version, written by pg_ctl each time the server starts.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  showLogs,
 }
 
@@ -32,7 +32,7 @@ func init() {
 }
 
 func showLogs(cmd *cobra.Command, args []string) error {
-	version, err := resolveInstalledVersion(args[0])
+	version, _, err := resolveTargetVersion(args)
 	if err != nil {
 		return err
 	}

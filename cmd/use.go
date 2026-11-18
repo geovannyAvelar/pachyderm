@@ -9,7 +9,7 @@ import (
 var useCmd = &cobra.Command{
 	Use:   "use <version>",
 	Short: "Switch the active PostgreSQL version",
-	Long:  `Point the "current" PostgreSQL version at an already-installed version.`,
+	Long:  `Point the "current" PostgreSQL version at an already-installed version. A major or minor version (e.g. 16) means the newest installed release of it.`,
 	Args:  cobra.ExactArgs(1),
 	RunE:  usePostgres,
 }
@@ -19,7 +19,7 @@ func init() {
 }
 
 func usePostgres(cmd *cobra.Command, args []string) error {
-	version, err := resolveInstalledVersion(args[0])
+	version, err := latestInstalled(args[0], "")
 	if err != nil {
 		return err
 	}

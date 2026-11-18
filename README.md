@@ -99,6 +99,62 @@ pachyderm get 16.14.0   # an exact release
 
 This resolves the version against real published releases, downloads the right binary for your OS/architecture, checks it against the SHA-256 checksum published with it, extracts it into `~/.pachyderm/versions/<resolved-version>/`, and points `~/.pachyderm/current` at it. The archive is extracted into a temporary directory first and only moved into place once it's complete, so an interrupted download never leaves a half-installed version behind.
 
+### Running a server: `start`, `stop`, `restart`, `status`
+
+```bash
+pachyderm start          # start the active version's server (initializing it on first use)
+pachyderm start 15 -p 5433   # start PostgreSQL 15 on port 5433, and remember that port
+pachyderm status         # every installed version: running or stopped, PID, port
+pachyderm restart        # e.g. after editing postgresql.conf
+pachyderm stop
+```
+
+```
+$ pachyderm status
+VERSION            STATUS           PID    PORT
+15.8.0             stopped          -      5433
+16.16.0 (current)  running          41232  5432
+17.12.0            not initialized  -      -
+```
+
+Servers listen on `127.0.0.1` only. `pachyderm init [version]` initializes a data directory without starting it. Starting a server that's already running, or stopping one that isn't, does nothing, so these are safe to use in scripts.
+
+### `pachyderm psql` and `pachyderm exec`
+
+`psql` connects to a running server with that version's own `psql`, on the `postgres` database unless you name another. Every argument goes to `psql` as it is:
+
+```bash
+pachyderm psql
+pachyderm psql -c 'SELECT version()'
+pachyderm psql 15 -d myapp
+```
+
+`exec` runs any other PostgreSQL program of that version, pointed at its server through `PGHOST`/`PGPORT` (and `PGDATABASE=postgres` unless already set):
+
+```bash
+pachyderm exec createdb myapp
+pachyderm exec pg_dump -Fc myapp -f myapp.dump
+```
+
+### Per-project versions: `local` and `current`
+
+```bash
+cd ~/code/myapp
+pachyderm local 16     # writes .pachyderm-version
+pachyderm current      # 16.16.0 (PostgreSQL 16, from /home/user/code/myapp/.pachyderm-version)
+pachyderm get          # installs the version the project asks for
+pachyderm start        # starts PostgreSQL 16 here, whatever the active version is
+```
+
+Every command that takes an optional `[version]` (`start`, `stop`, `restart`, `init`, `psql`, `exec`, `logs`, `config`, and `get`) picks it from the first of:
+
+1. the version given on the command line;
+2. the `PACHYDERM_VERSION` environment variable;
+3. the nearest `.pachyderm-version` file, or the `postgres` line of an asdf [`.tool-versions`](https://asdf-vm.com/manage/configuration.html#tool-versions) file, in the current directory or a parent;
+4. the active (`current`) version.
+
+A major or minor version (`16`, `16.10`) means the newest installed release of it. The project file only affects `pachyderm` commands: `psql` on your `PATH` still comes from `~/.pachyderm/current/bin` — use `pachyderm psql` / `pachyderm exec` to get the project's version.
+
 ### `pachyderm use <version>`
 
 Switch the active version to one that's already installed, without re-downloading:
@@ -117,7 +173,7 @@ pachyderm uninstall 15.18.0
 
 Stop its server first; `uninstall` refuses to remove a version whose server is running. The data directory is kept, since other releases of the same major version use it too.
 
-### `pachyderm logs <version>`
+### `pachyderm logs [version]`
 
 Show the server log written by `pg_ctl` each time a version's server starts:
 
@@ -127,7 +183,7 @@ pachyderm logs 16.14.0 -n 500    # last 500 lines
 pachyderm logs 16.14.0 -f        # follow the log as it grows
 ```
 
-### `pachyderm config <version>`
+### `pachyderm config [version]`
 
 Print the data directory and the paths to `postgresql.conf`, `pg_hba.conf`, and `pg_ident.conf` for an installed, initialized version — the same information Postgres.app shows in its "Server Settings" panel:
 
@@ -152,7 +208,7 @@ Release builds have the real version baked in via `-ldflags`; a build from sourc
 
 ## The desktop app
 
-`gui/` contains a [Wails](https://wails.io/) app that wraps the same install/switch logic with a UI for the parts the CLI doesn't do: initializing a data directory, starting/stopping a server, opening `psql`, enabling extensions (`CREATE EXTENSION`) on a running server — every extension bundled with PostgreSQL's own `contrib` (pgcrypto, hstore, pg_trgm, postgres_fdw, and so on), the same set Postgres.app ships with — and a "Config" button per version that lists its `postgresql.conf`/`pg_hba.conf`/`pg_ident.conf` paths with a one-click "Reveal" to open each in the OS file manager.
+`gui/` contains a [Wails](https://wails.io/) app that wraps the same logic with a UI: initializing a data directory, starting/stopping a server, opening `psql` in a terminal window, enabling extensions (`CREATE EXTENSION`) on a running server — every extension bundled with PostgreSQL's own `contrib` (pgcrypto, hstore, pg_trgm, postgres_fdw, and so on), the same set Postgres.app ships with — and a "Config" button per version that lists its `postgresql.conf`/`pg_hba.conf`/`pg_ident.conf` paths with a one-click "Reveal" to open each in the OS file manager.
 
 ```bash
 cd gui

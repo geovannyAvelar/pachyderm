@@ -10,8 +10,17 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "pachyderm",
-	Short: "PostgreSQL management tool",
-	Long:  `PostgreSQL management tool`,
+	Short: "A version manager for PostgreSQL",
+	Long: `Pachyderm installs, switches between, and runs multiple PostgreSQL
+versions locally, with no root or administrator rights.
+
+  pachyderm get 17      install PostgreSQL 17 and make it the active version
+  pachyderm start       start its server (initializing it on first use)
+  pachyderm psql        connect to it
+  pachyderm local 16    pin the current directory to PostgreSQL 16`,
+	// Usage is for mistakes in how a command is called; printing it after
+	// every runtime error (a failed download, a stopped server) is noise.
+	SilenceUsage: true,
 	// Older releases kept one data directory per release (data/16.14.0);
 	// move those to one per major version (data/16) before any command
 	// looks at them. A failure here is reported but doesn't block the
@@ -32,8 +41,4 @@ func Execute() {
 	if err != nil {
 		os.Exit(1)
 	}
-}
-
-func init() {
-
 }

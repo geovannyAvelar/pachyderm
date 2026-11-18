@@ -7,10 +7,10 @@ import (
 )
 
 var configCmd = &cobra.Command{
-	Use:   "config <version>",
+	Use:   "config [version]",
 	Short: "Show where a PostgreSQL version's config files live",
 	Long:  `Print the data directory and the paths to postgresql.conf, pg_hba.conf, and pg_ident.conf for an installed, initialized PostgreSQL version.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  showConfigFiles,
 }
 
@@ -19,7 +19,7 @@ func init() {
 }
 
 func showConfigFiles(cmd *cobra.Command, args []string) error {
-	version, err := resolveInstalledVersion(args[0])
+	version, _, err := resolveTargetVersion(args)
 	if err != nil {
 		return err
 	}

@@ -29,6 +29,9 @@ Versioning proper.
 - `pachyderm uninstall` now refuses to remove a version whose server is
   running, as the desktop app already did.
 - `config.json` is written atomically.
+- `use 16` with more than one 16.x installed now picks the newest one
+  instead of failing as ambiguous.
+- Runtime errors no longer print the command's usage after them.
 - The macOS desktop app is now a universal binary. The one published as
   `pachyderm-app-macos-amd64.zip` was actually built for Apple Silicon
   only, so it didn't run on Intel Macs; it's now
@@ -36,6 +39,18 @@ Versioning proper.
 
 ### Added
 
+- Server commands in the CLI: `init`, `start`, `stop`, `restart`, and
+  `status`, which until now only the desktop app had. `start --port`
+  saves the port for that major version.
+- `pachyderm psql`, connected to a version's running server, and
+  `pachyderm exec` to run any other PostgreSQL program (pg_dump,
+  createdb, ...) of that version against its server.
+- Per-project versions: `pachyderm local <version>` writes a
+  `.pachyderm-version` file, and the `postgres` line of an asdf
+  `.tool-versions` file and `$PACHYDERM_VERSION` work too. Commands given
+  no version use it; `pachyderm current` shows which one applies and why.
+- `get`, `logs`, and `config` take an optional version, resolved the same
+  way.
 - arm64 builds: the CLI for Linux and macOS (Apple Silicon), and the
   desktop app and `.deb` packages for Linux.
 - CI workflow running gofmt, go vet, and the tests on Linux, macOS, and
