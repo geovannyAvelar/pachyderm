@@ -1,28 +1,33 @@
 [
     {
+        "version": "18",
+        "current_minor": "18.7",
+        "supported": true
+    },
+    {
         "version": "17",
-        "current_minor": "17.6",
+        "current_minor": "17.12",
         "supported": true
     },
     {
         "version": "16",
-        "current_minor": "16.10",
+        "current_minor": "16.16",
         "supported": true
     },
     {
         "version": "15",
-        "current_minor": "15.14",
+        "current_minor": "15.20",
         "supported": true
     },
     {
         "version": "14",
-        "current_minor": "14.19",
-        "supported": true
+        "current_minor": "14.25",
+        "supported": false
     },
     {
         "version": "13",
-        "current_minor": "13.22",
-        "supported": true
+        "current_minor": "13.23",
+        "supported": false
     },
     {
         "version": "12",

@@ -32,6 +32,10 @@ Versioning proper.
 - `use 16` with more than one 16.x installed now picks the newest one
   instead of failing as ambiguous.
 - Runtime errors no longer print the command's usage after them.
+- Updated the version catalog shown by `pachyderm list` (and the
+  desktop app): added PostgreSQL 18, updated every supported major's
+  current minor, and marked 13 and 14 as no longer supported (14 reached
+  end of life on 2026-11-12).
 - The macOS desktop app is now a universal binary. The one published as
   `pachyderm-app-macos-amd64.zip` was actually built for Apple Silicon
   only, so it didn't run on Intel Macs; it's now

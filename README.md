@@ -73,9 +73,11 @@ Show the catalog of PostgreSQL major versions and their support status:
 ```
 $ pachyderm list
 VERSION  CURRENT MINOR  SUPPORTED
-17       17.6           yes
-16       16.10          yes
-15       15.14          yes
+18       18.7           yes
+17       17.12          yes
+16       16.16          yes
+15       15.20          yes
+14       14.25          no
 ...
 ```
 
