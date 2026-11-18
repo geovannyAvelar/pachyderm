@@ -55,6 +55,8 @@ Versioning proper.
   no version use it; `pachyderm current` shows which one applies and why.
 - `get`, `logs`, and `config` take an optional version, resolved the same
   way.
+- Integration tests (Testcontainers) running the CLI end to end in clean
+  Debian, Ubuntu, and Fedora containers, on amd64 and arm64, in CI.
 - arm64 builds: the CLI for Linux and macOS (Apple Silicon), and the
   desktop app and `.deb` packages for Linux.
 - CI workflow running gofmt, go vet, and the tests on Linux, macOS, and

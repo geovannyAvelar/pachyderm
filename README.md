@@ -255,6 +255,17 @@ go build ./...   # the gui module has its own go.mod, pointed at the root module
 go test ./...
 ```
 
+### Integration tests
+
+[`integration/`](integration/) runs the CLI end to end with [Testcontainers](https://golang.testcontainers.org/), in clean Debian, Ubuntu, and Fedora containers as a non-root user: installing real PostgreSQL releases, starting servers, `psql`/`exec`, the `postgres` role and the Unix socket, contrib extensions and PostGIS, restarts, migrating an old data directory, a minor upgrade that keeps its data, and project version files. It's a separate Go module, so its dependencies stay out of the CLI's, and it needs Docker and network access to GitHub:
+
+```bash
+cd integration
+go test -v -timeout 40m ./...   # set GITHUB_TOKEN to avoid GitHub's API rate limit
+```
+
+CI runs it on amd64 and arm64.
+
 ## License
 
 [MIT](LICENSE)

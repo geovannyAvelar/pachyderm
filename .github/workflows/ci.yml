@@ -119,3 +119,33 @@ jobs:
           tags=""
           [ "$RUNNER_OS" = "Linux" ] && tags="-tags webkit2_41"
           go test $tags ./...
+
+  # Runs the CLI end to end in clean Debian, Ubuntu, and Fedora containers
+  # (see integration/), with real PostgreSQL and PostGIS downloads.
+  integration:
+    name: Integration (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v4
+
+      # The integration module needs a newer Go than the CLI (for
+      # testcontainers); its go.mod names it, and building the CLI from it
+      # works the same.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: integration/go.mod
+          cache-dependency-path: integration/go.sum
+
+      - name: go vet
+        working-directory: integration
+        run: go vet ./...
+
+      - name: Test
+        working-directory: integration
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: go test -v -timeout 40m ./...
