@@ -46,6 +46,10 @@ Versioning proper.
   replaced PostgreSQL's. Pachyderm now checks the glibc version those
   binaries need before installing them, and refuses with an explanation,
   changing nothing, if the system's is older.
+- The PostGIS binaries themselves were rebuilt (in
+  geovannyAvelar/postgis-binaries) for glibc 2.34 and against
+  PostgreSQL's own libraries, so they no longer replace any of them;
+  PostGIS now works on Debian 12 and on PostgreSQL 18 too.
 - After installing PostGIS, a running server is restarted, so it loads
   the libraries PostGIS needs instead of failing to load it.
 - The CLI's normal output went to stderr instead of stdout, so it
