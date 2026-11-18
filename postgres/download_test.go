@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -102,7 +103,8 @@ func TestInstallVerifiesChecksum(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o755 {
+	// Windows has no Unix permission bits to check.
+	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o755 {
 		t.Errorf("install dir mode = %o, want 755", perm)
 	}
 	assertNoTempLeftovers(t)

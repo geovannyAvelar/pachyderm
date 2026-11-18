@@ -339,12 +339,25 @@ exit 0
 }
 
 func TestSocketConnectDirShortPath(t *testing.T) {
-	withTempHome(t)
+	if runtime.GOOS == "windows" {
+		t.Skip("PostgreSQL has no Unix-domain sockets on Windows; StartServer never calls socketConnectDir there")
+	}
+	// t.TempDir() can be too long to need no symlink (macOS's $TMPDIR is
+	// /var/folders/<...>/T/), so use a short $HOME under /tmp instead.
+	home, err := os.MkdirTemp("/tmp", "pd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(home) })
+	t.Setenv("HOME", home)
 	const version = "16.14.0"
 
 	realDir, err := SocketDir(version)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !fitsSocketPath(realDir, 5432) {
+		t.Fatalf("test setup bug: realDir %q unexpectedly doesn't fit", realDir)
 	}
 
 	dir, ok, err := socketConnectDir(version, 5432)
