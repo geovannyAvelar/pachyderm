@@ -35,6 +35,15 @@ func fakeGitHub(t *testing.T, files map[string][]byte) {
 	t.Cleanup(func() { githubDownloadBase, githubAPIBase = oldDownload, oldAPI })
 }
 
+func mustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	data, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
 func gzipTar(t *testing.T, entries map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer

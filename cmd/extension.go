@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"text/tabwriter"
 
 	"pachyderm/postgres"
@@ -132,5 +133,15 @@ func getPostGIS(cmd *cobra.Command, args []string) error {
 	}
 
 	cmd.Printf("Installed PostGIS %s for PostgreSQL %s.\n", postgisVersion, version)
+
+	// The server has PostgreSQL's previous libraries loaded; PostGIS
+	// needs the ones it just installed.
+	restarted, err := postgres.RestartServerIfRunning(version)
+	if err != nil {
+		return fmt.Errorf("restarting PostgreSQL %s to load PostGIS: %w", version, err)
+	}
+	if restarted {
+		cmd.Printf("Restarted PostgreSQL %s to load PostGIS.\n", version)
+	}
 	return nil
 }

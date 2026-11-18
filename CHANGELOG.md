@@ -39,6 +39,15 @@ Versioning proper.
   so that release couldn't start on the same data directory. Versions
   installed before this fix are still missing those files; reinstall
   them (`pachyderm uninstall <version>`, then `pachyderm get <version>`).
+- Installing PostGIS on a system with glibc older than 2.38 (Debian 12,
+  Ubuntu 22.04, RHEL/Rocky 9, ...) left PostgreSQL unable to start: the
+  PostGIS binaries carry their own builds of libraries PostgreSQL ships
+  (libcrypto, libxml2, libstdc++, ...), built for glibc 2.38, which
+  replaced PostgreSQL's. Pachyderm now checks the glibc version those
+  binaries need before installing them, and refuses with an explanation,
+  changing nothing, if the system's is older.
+- After installing PostGIS, a running server is restarted, so it loads
+  the libraries PostGIS needs instead of failing to load it.
 - The CLI's normal output went to stderr instead of stdout, so it
   couldn't be piped or redirected (e.g. `pachyderm version > file` wrote
   nothing). It now goes to stdout; errors still go to stderr.

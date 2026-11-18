@@ -288,6 +288,16 @@ func (a *App) DownloadPostGIS(version, postgisVersion string) error {
 	}
 	a.emit(fmt.Sprintf("Installed PostGIS %s for PostgreSQL %s.", postgisVersion, version))
 
+	// The server has PostgreSQL's previous libraries loaded; PostGIS
+	// needs the ones it just installed.
+	restarted, err := postgres.RestartServerIfRunning(version)
+	if err != nil {
+		return fmt.Errorf("restarting PostgreSQL %s to load PostGIS: %w", version, err)
+	}
+	if restarted {
+		a.emit(fmt.Sprintf("Restarted PostgreSQL %s to load PostGIS.", version))
+	}
+
 	return nil
 }
 

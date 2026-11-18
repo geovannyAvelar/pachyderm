@@ -197,6 +197,25 @@ pg_hba.conf:      /home/user/.pachyderm/data/16.14.0/pg_hba.conf
 pg_ident.conf:    /home/user/.pachyderm/data/16.14.0/pg_ident.conf
 ```
 
+### `pachyderm extension`
+
+Enable or disable extensions on a running server — every extension in PostgreSQL's own `contrib` (pgcrypto, hstore, pg_trgm, postgres_fdw, ...) is available:
+
+```bash
+pachyderm extension list 17
+pachyderm extension install 17 pgcrypto
+pachyderm extension uninstall 17 pgcrypto
+```
+
+PostGIS isn't part of PostgreSQL, so its binaries are downloaded first, from [geovannyAvelar/postgis-binaries](https://github.com/geovannyAvelar/postgis-binaries), then installed like any other extension:
+
+```bash
+pachyderm extension get-postgis 17    # restarts the server if it's running, to load PostGIS
+pachyderm extension install 17 postgis
+```
+
+PostGIS binaries exist for PostgreSQL 13–17 on Linux, and need glibc 2.38 or newer (e.g. Ubuntu 24.04, Fedora 39+, Debian 13). On an older system, `get-postgis` refuses and changes nothing, because they would replace libraries PostgreSQL itself depends on.
+
 ### `pachyderm version`
 
 Print the CLI's own version (also available as `pachyderm --version`):

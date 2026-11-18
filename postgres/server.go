@@ -342,6 +342,24 @@ func StopServer(version string) error {
 	return nil
 }
 
+// RestartServerIfRunning restarts a version's server, on the port it's
+// listening on, if it's running, and reports whether it did. Use it after
+// changing files a running server has loaded, like PostGIS's libraries.
+func RestartServerIfRunning(version string) (bool, error) {
+	running, _, err := ServerStatus(version)
+	if err != nil || !running {
+		return false, err
+	}
+	port, err := RunningPort(version)
+	if err != nil {
+		return false, err
+	}
+	if err := StopServer(version); err != nil {
+		return false, err
+	}
+	return true, StartServer(version, port)
+}
+
 // TailLog returns up to the last n lines of a version's server log, written
 // by pg_ctl each time the server starts.
 func TailLog(version string, n int) (string, error) {

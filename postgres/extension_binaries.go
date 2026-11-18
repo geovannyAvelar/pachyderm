@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -85,7 +86,9 @@ func postGISAssetSHA256(release ghRelease, assetName, assetURL string) (string, 
 //
 // The archive is verified and extracted into a staging directory before
 // anything is moved into the PostgreSQL install, so a failed or corrupted
-// download leaves that install as it was.
+// download, or one needing a newer glibc than this system has, leaves that
+// install as it was. A running server keeps the libraries it started with
+// until restarted; see RestartServerIfRunning.
 func InstallPostGISBinary(pgVersion, postgisVersion string) error {
 	installed, err := IsInstalled(pgVersion)
 	if err != nil {
@@ -167,6 +170,15 @@ func InstallPostGISBinary(pgVersion, postgisVersion string) error {
 
 	if err := extractTarGz(archive, staging); err != nil {
 		return err
+	}
+	// The PostGIS archives carry their own builds of libraries PostgreSQL
+	// already ships (libcrypto, libxml2, libstdc++, ...), which replace
+	// PostgreSQL's. If they need a newer glibc than this system has,
+	// PostgreSQL itself would no longer start.
+	if runtime.GOOS == "linux" {
+		if err := checkGlibc(staging, fmt.Sprintf("PostGIS %s for PostgreSQL %s", tag, pgMajor)); err != nil {
+			return err
+		}
 	}
 	if err := mergeDir(staging, dir); err != nil {
 		return fmt.Errorf("installing PostGIS into PostgreSQL %s: %w", pgVersion, err)

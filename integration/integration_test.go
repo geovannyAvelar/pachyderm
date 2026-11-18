@@ -62,6 +62,9 @@ type distro struct {
 	name  string
 	image string
 	setup string
+	// oldGlibc is set for distros whose glibc is older than the PostGIS
+	// binaries need (2.38), where pachyderm must refuse to install them.
+	oldGlibc bool
 }
 
 var distros = []distro{
@@ -69,6 +72,8 @@ var distros = []distro{
 		name:  "debian",
 		image: "debian:bookworm-slim",
 		setup: "apt-get update -qq && apt-get install -y -qq ca-certificates >/dev/null && useradd -m tester",
+		// glibc 2.36
+		oldGlibc: true,
 	},
 	{
 		name:  "ubuntu",
@@ -208,14 +213,14 @@ func TestOnCleanDistros(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			b := startBox(t, d)
-			runScenario(t, b)
+			runScenario(t, b, d)
 		})
 	}
 }
 
 // runScenario walks through what a user does with pachyderm, from a fresh
 // install to several servers, upgrades, projects, and extensions.
-func runScenario(t *testing.T, b0 *box) {
+func runScenario(t *testing.T, b0 *box, d distro) {
 	// Subtests get their own *testing.T, so each one gets a box using it.
 	on := func(t *testing.T) *box { return &box{t: t, c: b0.c} }
 
@@ -341,17 +346,33 @@ func runScenario(t *testing.T, b0 *box) {
 	})
 
 	// Last, because installing PostGIS replaces libraries PostgreSQL ships
-	// with (see the PostGIS binaries), which can leave the install unable
-	// to start: nothing after this step should depend on it.
+	// with: nothing else should depend on it.
+	if d.oldGlibc {
+		step(t, "PostGIS is refused on a glibc too old for it", func(t *testing.T) {
+			b := on(t)
+			b.sh("pachyderm start 17")
+			out := b.shFails("pachyderm extension get-postgis 17")
+			assertContains(t, out, "needs glibc 2.38 or newer")
+			assertContains(t, out, "nothing was changed")
+
+			// PostgreSQL is untouched, and still starts.
+			b.sh("pachyderm restart 17")
+			assertEqual(t, b.sh("pachyderm psql -tAc 'SELECT body FROM notes'"), "kept")
+			b.sh("pachyderm stop 17")
+		})
+		return
+	}
+
 	step(t, "PostGIS downloads and works", func(t *testing.T) {
 		b := on(t)
 		b.sh("pachyderm start 17")
-		b.sh("pachyderm extension get-postgis 17")
-		// A running server has the libraries it started with loaded;
-		// PostGIS's replacements only take effect after a restart.
-		b.sh("pachyderm restart 17")
+		// get-postgis restarts the running server itself, so it loads
+		// the libraries PostGIS brings.
+		assertContains(t, b.sh("pachyderm extension get-postgis 17"), "Restarted PostgreSQL 17.")
 		b.sh("pachyderm extension install 17 postgis")
 		assertEqual(t, b.sh("pachyderm psql -tAc 'SELECT ST_Distance(ST_Point(0, 0), ST_Point(3, 4))'"), "5")
 		assertContains(t, b.sh("pachyderm psql -tAc 'SELECT postgis_lib_version()'"), "3.")
+		assertEqual(t, b.sh("pachyderm psql -tAc 'SELECT body FROM notes'"), "kept")
+		b.sh("pachyderm stop 17")
 	})
 }
