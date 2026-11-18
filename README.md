@@ -61,7 +61,7 @@ sudo apt install pachyderm
 Or grab the `.deb` directly from a release and install it without adding the repo:
 
 ```bash
-sudo apt install ./pachyderm_<version>_amd64.deb
+sudo apt install ./pachyderm_<version>_amd64.deb   # or _arm64.deb
 ```
 
 ## CLI usage
@@ -164,7 +164,18 @@ See [gui/README.md](gui/README.md) for Wails-specific details.
 
 ## Releases
 
-Pushing a version tag (e.g. `v0.0.20`) triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds the CLI (Linux/macOS/Windows) and the desktop app (Linux/macOS/Windows), plus `.deb` packages for both on Linux (built with [nfpm](https://nfpm.goreleaser.com/), configured in [`packaging/`](packaging/)), and publishes all eight artifacts to a GitHub Release under that tag.
+Pushing a version tag (e.g. `v0.0.20`) triggers [`.github/workflows/release.yml`](.github/workflows/release.yml). It first runs the same checks as CI (below), then builds:
+
+| | Linux | macOS | Windows |
+|---|---|---|---|
+| CLI | amd64, arm64 (`.tar.gz` and `.deb`) | amd64, arm64 (`.tar.gz`) | amd64 (`.exe`) |
+| Desktop app | amd64, arm64 (`.tar.gz` and `.deb`) | universal — Intel and Apple Silicon (`.zip`) | amd64 (`.exe`) |
+
+`.deb` packages are built with [nfpm](https://nfpm.goreleaser.com/), configured in [`packaging/`](packaging/). Everything is published to a GitHub Release under that tag. There is no Windows arm64 build, because no prebuilt PostgreSQL binaries exist for it.
+
+### CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request: `gofmt` and `go vet`, the CLI's tests on Linux (amd64 and arm64), macOS (Apple Silicon and Intel) and Windows, and the desktop app's tests on Linux, macOS and Windows. On each CLI platform it also installs a real PostgreSQL release with the freshly built CLI and runs it, to check that the binary for that platform downloads, verifies and works.
 
 ### Unstable builds
 

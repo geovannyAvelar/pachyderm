@@ -23,8 +23,13 @@ env:
   TAG_NAME: ${{ github.event.inputs.tag_name || github.ref_name }}
 
 jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/ci.yml
+
   build-cli:
-    name: Build CLI (${{ matrix.goos }})
+    name: Build CLI (${{ matrix.goos }}/${{ matrix.goarch }})
+    needs: [test]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -33,9 +38,15 @@ jobs:
           - goos: linux
             goarch: amd64
             asset: pachyderm-linux-amd64
+          - goos: linux
+            goarch: arm64
+            asset: pachyderm-linux-arm64
           - goos: darwin
             goarch: amd64
             asset: pachyderm-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            asset: pachyderm-darwin-arm64
           - goos: windows
             goarch: amd64
             asset: pachyderm-windows-amd64.exe
@@ -58,10 +69,15 @@ jobs:
 
       - name: Build .deb package
         if: matrix.goos == 'linux'
+        env:
+          ARCH: ${{ matrix.goarch }}
         run: |
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
           export VERSION="${TAG_NAME#v}"
+          mkdir -p dist/deb
+          cp dist/${{ matrix.asset }} dist/deb/pachyderm
           "$(go env GOPATH)/bin/nfpm" package -f packaging/nfpm-cli.yaml -p deb -t dist/
+          rm -r dist/deb
 
       # GitHub release assets are plain files, not archives, so the exec bit
       # set here is lost on download. Only tar preserves it through that
@@ -75,21 +91,31 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cli-${{ matrix.goos }}
+          name: cli-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*
 
   build-gui:
-    name: Build GUI (${{ matrix.platform }})
+    name: Build GUI (${{ matrix.platform }}/${{ matrix.arch }})
+    needs: [test]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        # Wails needs cgo and the native webview, so each GUI build runs on
+        # a runner of its own platform and architecture -- except macOS,
+        # where one runner builds a universal (arm64 + amd64) app.
         include:
           - platform: linux
+            arch: amd64
             os: ubuntu-latest
+          - platform: linux
+            arch: arm64
+            os: ubuntu-24.04-arm
           - platform: windows
+            arch: amd64
             os: windows-latest
           - platform: darwin
+            arch: universal
             os: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -126,13 +152,23 @@ jobs:
           VERSION="${TAG_NAME#v}"
           wails build -tags webkit2_41 -ldflags "-X main.appVersion=${VERSION}"
 
-      - name: Build GUI (windows/macos)
-        if: matrix.platform != 'linux'
+      - name: Build GUI (windows)
+        if: matrix.platform == 'windows'
         working-directory: gui
         shell: bash
         run: |
           VERSION="${TAG_NAME#v}"
           wails build -ldflags "-X main.appVersion=${VERSION}"
+
+      # Without -platform, Wails builds for the runner's own architecture,
+      # and macos-latest is Apple Silicon: the app would not run on Intel
+      # Macs. A universal binary runs natively on both.
+      - name: Build GUI (macos)
+        if: matrix.platform == 'darwin'
+        working-directory: gui
+        run: |
+          VERSION="${TAG_NAME#v}"
+          wails build -platform darwin/universal -ldflags "-X main.appVersion=${VERSION}"
 
       - name: Package artifact (linux)
         if: matrix.platform == 'linux'
@@ -141,10 +177,12 @@ jobs:
         run: |
           mkdir -p dist
           chmod +x gui/build/bin/pachyderm-app
-          tar -C gui/build/bin -czf dist/pachyderm-app-linux-amd64.tar.gz pachyderm-app
+          tar -C gui/build/bin -czf dist/pachyderm-app-linux-${{ matrix.arch }}.tar.gz pachyderm-app
 
       - name: Build .deb package
         if: matrix.platform == 'linux'
+        env:
+          ARCH: ${{ matrix.arch }}
         run: |
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
           export VERSION="${TAG_NAME#v}"
@@ -161,11 +199,11 @@ jobs:
         if: matrix.platform == 'darwin'
         run: |
           mkdir -p dist
-          ditto -c -k --sequesterRsrc --keepParent gui/build/bin/pachyderm-app.app dist/pachyderm-app-macos-amd64.zip
+          ditto -c -k --sequesterRsrc --keepParent gui/build/bin/pachyderm-app.app dist/pachyderm-app-macos-universal.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: gui-${{ matrix.platform }}
+          name: gui-${{ matrix.platform }}-${{ matrix.arch }}
           path: dist/*
 
   release:

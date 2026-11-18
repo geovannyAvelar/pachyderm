@@ -1,5 +1,5 @@
 name: pachyderm
-arch: amd64
+arch: ${ARCH}
 platform: linux
 version: ${VERSION}
 section: database
@@ -13,7 +13,9 @@ description: |
   runtimes.
 
 contents:
-  - src: ./dist/pachyderm-linux-amd64
+  # nfpm doesn't expand variables in src, so release.yml copies the
+  # binary for the architecture being packaged to this fixed path.
+  - src: ./dist/deb/pachyderm
     dst: /usr/bin/pachyderm
     file_info:
       mode: 0755

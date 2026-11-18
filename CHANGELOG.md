@@ -29,6 +29,19 @@ Versioning proper.
 - `pachyderm uninstall` now refuses to remove a version whose server is
   running, as the desktop app already did.
 - `config.json` is written atomically.
+- The macOS desktop app is now a universal binary. The one published as
+  `pachyderm-app-macos-amd64.zip` was actually built for Apple Silicon
+  only, so it didn't run on Intel Macs; it's now
+  `pachyderm-app-macos-universal.zip`.
+
+### Added
+
+- arm64 builds: the CLI for Linux and macOS (Apple Silicon), and the
+  desktop app and `.deb` packages for Linux.
+- CI workflow running gofmt, go vet, and the tests on Linux, macOS, and
+  Windows (including arm64) on every push and pull request, plus a smoke
+  test installing a real PostgreSQL release. Releases now run it first
+  and aren't built if it fails.
 
 ## [0.0.20] - 2026-09-10
 
