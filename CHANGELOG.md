@@ -32,6 +32,13 @@ Versioning proper.
 - `use 16` with more than one 16.x installed now picks the newest one
   instead of failing as ambiguous.
 - Runtime errors no longer print the command's usage after them.
+- Installs were missing about 250 files: hard links in the PostgreSQL
+  archives were skipped. They are mostly time zone names, so e.g.
+  `SET timezone = 'UTC'` could fail, and `initdb` could pick a zone name
+  (like `UCT`) that a later minor release of the same major didn't have,
+  so that release couldn't start on the same data directory. Versions
+  installed before this fix are still missing those files; reinstall
+  them (`pachyderm uninstall <version>`, then `pachyderm get <version>`).
 - The CLI's normal output went to stderr instead of stdout, so it
   couldn't be piped or redirected (e.g. `pachyderm version > file` wrote
   nothing). It now goes to stdout; errors still go to stderr.

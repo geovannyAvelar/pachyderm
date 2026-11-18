@@ -216,8 +216,54 @@ func extractTar(r io.Reader, destDir string) error {
 			if err := os.Symlink(header.Linkname, target); err != nil {
 				return err
 			}
+		case tar.TypeLink:
+			// A hard link names an earlier entry of the same archive, by
+			// its full archive path. The PostgreSQL archives use them for
+			// identical files, mostly time zones (UTC, UCT, Etc/UTC, Zulu,
+			// ...): skipping them leaves those names missing.
+			linkParts := strings.SplitN(header.Linkname, "/", 2)
+			if len(linkParts) < 2 || linkParts[1] == "" {
+				return fmt.Errorf("archive hard link has an invalid target: %s -> %s", header.Name, header.Linkname)
+			}
+			source := filepath.Join(destDir, linkParts[1])
+			if !strings.HasPrefix(source, cleanDest+string(os.PathSeparator)) {
+				return fmt.Errorf("archive hard link escapes destination: %s -> %s", header.Name, header.Linkname)
+			}
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				return err
+			}
+			os.Remove(target)
+			if err := os.Link(source, target); err != nil {
+				// Some filesystems can't hard-link; a copy is equivalent.
+				if err := copyFile(source, target); err != nil {
+					return fmt.Errorf("extracting hard link %s: %w", header.Name, err)
+				}
+			}
 		}
 	}
+}
+
+// copyFile copies src to dst, keeping src's permissions.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	info, err := in.Stat()
+	if err != nil {
+		return err
+	}
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
 }
 
 // SetCurrent points the "current" link (a symlink on Unix, a junction on Windows) at an installed version.

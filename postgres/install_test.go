@@ -138,3 +138,50 @@ func TestInstallLifecycle(t *testing.T) {
 		t.Fatalf("expected current symlink to be cleared, got %q", current)
 	}
 }
+
+func TestExtractTarCreatesHardLinks(t *testing.T) {
+	dest := t.TempDir()
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	write := func(hdr *tar.Header, content string) {
+		t.Helper()
+		if err := tw.WriteHeader(hdr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The layout of the real PostgreSQL archives: one time zone file, and
+	// its other names as hard links to it, by full archive path.
+	write(&tar.Header{Name: "pg/share/timezone/UTC", Mode: 0o644, Size: 4, Typeflag: tar.TypeReg}, "TZif")
+	write(&tar.Header{Name: "pg/share/timezone/UCT", Typeflag: tar.TypeLink, Linkname: "pg/share/timezone/UTC"}, "")
+	write(&tar.Header{Name: "pg/share/timezone/Etc/UTC", Typeflag: tar.TypeLink, Linkname: "pg/share/timezone/UTC"}, "")
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := extractTar(&buf, dest); err != nil {
+		t.Fatalf("extractTar: %v", err)
+	}
+	for _, name := range []string{"UTC", "UCT", filepath.Join("Etc", "UTC")} {
+		data, err := os.ReadFile(filepath.Join(dest, "share", "timezone", name))
+		if err != nil || string(data) != "TZif" {
+			t.Errorf("%s = %q, %v; want the linked file's content", name, data, err)
+		}
+	}
+}
+
+func TestExtractTarRejectsEscapingHardLink(t *testing.T) {
+	dest := t.TempDir()
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	if err := tw.WriteHeader(&tar.Header{Name: "pg/passwd", Typeflag: tar.TypeLink, Linkname: "pg/../../etc/passwd"}); err != nil {
+		t.Fatal(err)
+	}
+	tw.Close()
+
+	if err := extractTar(&buf, dest); err == nil {
+		t.Fatal("expected an error for a hard link pointing outside the destination")
+	}
+}
