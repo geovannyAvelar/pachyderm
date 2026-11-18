@@ -37,6 +37,15 @@ Everything lives under the current user's home directory, and every operation â€
 
 **On Windows**, that mostly falls out for free, with one exception: creating a directory symlink (which is what `current` is on Linux/macOS) requires `SeCreateSymbolicLinkPrivilege`, a permission standard Windows accounts don't have unless Developer Mode is turned on. So on Windows, `current` is an [NTFS junction](https://learn.microsoft.com/en-us/windows/win32/fileio/hard-links-and-junctions) instead of a symlink â€” junctions only need write access to `~/.pachyderm`, not that privilege, so no elevation is required. Everything that reads `current` (`CurrentBinDir`, `CurrentVersion`, etc.) works the same either way; junctions are handled transparently by Go's standard library. The desktop app's "start at login" toggle is similarly scoped to the current user: it writes to the `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` registry key rather than registering a system service, which is also admin-free.
 
+## System requirements
+
+Pachyderm itself runs anywhere Go does, but the PostgreSQL binaries it installs (from [theseus-rs/postgresql-binaries](https://github.com/theseus-rs/postgresql-binaries)) have requirements of their own on Linux:
+
+- **glibc 2.36 or newer.** The libraries those builds ship with (`libstdc++`, `libcrypt`, ...) need it, so PostgreSQL doesn't start on older distributions: it works on Debian 12+, Ubuntu 23.04+ (e.g. 24.04), and Fedora 37+, but **not on Ubuntu 22.04 or RHEL / Rocky / AlmaLinux 9** (glibc 2.35 and 2.34). Check yours with `getconf GNU_LIBC_VERSION`.
+- **PostgreSQL 13 needs some system libraries.** Unlike 14 and newer, its build isn't self-contained: it uses the system's ICU 72, OpenSSL 3, Kerberos (`libgssapi_krb5`), libxml2, and readline, and won't run where those exact versions are missing (e.g. Debian 13 or Ubuntu 24.04, whose ICU is newer). PostgreSQL 13 is also past its end of life; prefer a newer major.
+
+PostGIS (`pachyderm extension get-postgis`) runs wherever the PostgreSQL it's installed into runs.
+
 ## Installing the CLI
 
 Build it from source (requires Go 1.24+):
