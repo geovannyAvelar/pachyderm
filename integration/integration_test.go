@@ -224,7 +224,9 @@ func runScenario(t *testing.T, b0 *box) {
 		out := b.sh("pachyderm get 17")
 		assertContains(t, out, "as the active version")
 		assertContains(t, b.sh("~/.pachyderm/current/bin/postgres --version"), "(PostgreSQL) 17.")
-		assertContains(t, b.sh("pachyderm list --installed"), "(current)")
+		// Normal output must go to stdout, so it can be piped.
+		assertContains(t, b.sh("pachyderm list --installed 2>/dev/null"), "(current)")
+		assertContains(t, b.sh("pachyderm current 2>/dev/null | cut -d' ' -f1"), "17.")
 	})
 
 	step(t, "start initializes and runs a server", func(t *testing.T) {

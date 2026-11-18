@@ -36,6 +36,14 @@ versions locally, with no root or administrator rights.
 	},
 }
 
+func init() {
+	// cobra's cmd.Print* write to OutOrStderr(), i.e. stderr unless an
+	// output is set, which would send every command's normal output to
+	// stderr: "pachyderm current | cut ..." would see nothing. Errors and
+	// notices still go to stderr, through cmd.PrintErr* and cobra itself.
+	rootCmd.SetOut(os.Stdout)
+}
+
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {

@@ -32,6 +32,9 @@ Versioning proper.
 - `use 16` with more than one 16.x installed now picks the newest one
   instead of failing as ambiguous.
 - Runtime errors no longer print the command's usage after them.
+- The CLI's normal output went to stderr instead of stdout, so it
+  couldn't be piped or redirected (e.g. `pachyderm version > file` wrote
+  nothing). It now goes to stdout; errors still go to stderr.
 - Updated the version catalog shown by `pachyderm list` (and the
   desktop app): added PostgreSQL 18, updated every supported major's
   current minor, and marked 13 and 14 as no longer supported (14 reached
