@@ -266,14 +266,6 @@ func runScenario(t *testing.T, b0 *box) {
 		assertContains(t, b.sh("pachyderm extension list 17 | grep '^pgcrypto '"), "yes")
 	})
 
-	step(t, "PostGIS downloads and works", func(t *testing.T) {
-		b := on(t)
-		b.sh("pachyderm extension get-postgis 17")
-		b.sh("pachyderm extension install 17 postgis")
-		assertEqual(t, b.sh("pachyderm psql -tAc 'SELECT ST_Distance(ST_Point(0, 0), ST_Point(3, 4))'"), "5")
-		assertContains(t, b.sh("pachyderm psql -tAc 'SELECT postgis_lib_version()'"), "3.")
-	})
-
 	step(t, "uninstall refuses a running version", func(t *testing.T) {
 		b := on(t)
 		assertContains(t, b.shFails("pachyderm uninstall 17"), "stop the PostgreSQL")
@@ -346,5 +338,20 @@ func runScenario(t *testing.T, b0 *box) {
 		b.sh("pachyderm uninstall 16.15.1")
 		// The shared data directory outlives the uninstalled release.
 		assertEqual(t, b.sh("cat ~/.pachyderm/data/16/PG_VERSION"), "16")
+	})
+
+	// Last, because installing PostGIS replaces libraries PostgreSQL ships
+	// with (see the PostGIS binaries), which can leave the install unable
+	// to start: nothing after this step should depend on it.
+	step(t, "PostGIS downloads and works", func(t *testing.T) {
+		b := on(t)
+		b.sh("pachyderm start 17")
+		b.sh("pachyderm extension get-postgis 17")
+		// A running server has the libraries it started with loaded;
+		// PostGIS's replacements only take effect after a restart.
+		b.sh("pachyderm restart 17")
+		b.sh("pachyderm extension install 17 postgis")
+		assertEqual(t, b.sh("pachyderm psql -tAc 'SELECT ST_Distance(ST_Point(0, 0), ST_Point(3, 4))'"), "5")
+		assertContains(t, b.sh("pachyderm psql -tAc 'SELECT postgis_lib_version()'"), "3.")
 	})
 }
