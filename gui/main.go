@@ -29,6 +29,7 @@ func main() {
 		StartHidden:       true,
 		HideWindowOnClose: true,
 		OnStartup:         app.startup,
+		OnDomReady:        app.domReady,
 		Bind: []interface{}{
 			app,
 		},

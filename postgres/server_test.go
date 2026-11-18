@@ -34,6 +34,13 @@ func writeFakeBin(t *testing.T, version, name, script string) {
 	}
 }
 
+// fakePgCtlStopped is a pg_ctl that reports no running server to "status"
+// and succeeds at everything else.
+const fakePgCtlStopped = `
+case "$*" in *status*) echo "pg_ctl: no server running"; exit 3;; esac
+exit 0
+`
+
 func TestInitDBCreatesDataDir(t *testing.T) {
 	withTempHome(t)
 	const version = "16.14.0"
@@ -199,7 +206,7 @@ echo "$@" > `+captureFile+`
 cat >> `+captureFile+`
 exit 0
 `)
-	writeFakeBin(t, version, "pg_ctl", `exit 0`)
+	writeFakeBin(t, version, "pg_ctl", fakePgCtlStopped)
 
 	if err := StartServer(version, 5432); err != nil {
 		t.Fatalf("StartServer: %v", err)

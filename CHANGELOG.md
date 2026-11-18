@@ -5,6 +5,31 @@ All notable changes to this project are documented in this file, based on
 a bespoke `major.minor.patch`-shaped version number rather than Semantic
 Versioning proper.
 
+## [Unreleased]
+
+### Changed
+
+- Data directories are now per major version (`~/.pachyderm/data/16`)
+  instead of per release (`~/.pachyderm/data/16.14.0`), so moving to a
+  newer minor release keeps your databases. Existing per-release data
+  directories are moved automatically when that's safe; otherwise
+  Pachyderm prints what to do and leaves them as they are.
+- Configured server ports are now per major version too.
+- A server started by one release of a major version is no longer shown
+  as running for the other releases of that major version, and starting
+  one of those reports which release is using the data directory.
+
+### Fixed
+
+- Downloads of PostgreSQL and PostGIS binaries are now checked against
+  their published SHA-256 checksums before anything is extracted.
+- An interrupted or failed install no longer leaves a partial version that
+  looked installed: archives are extracted into a staging directory and
+  moved into place only when complete.
+- `pachyderm uninstall` now refuses to remove a version whose server is
+  running, as the desktop app already did.
+- `config.json` is written atomically.
+
 ## [0.0.20] - 2026-09-10
 
 ### Added

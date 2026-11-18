@@ -15,15 +15,6 @@ import (
 	"time"
 )
 
-// DataDir returns the data directory for a version's PostgreSQL cluster.
-func DataDir(version string) (string, error) {
-	base, err := HomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(base, "data", version), nil
-}
-
 // maxSocketPathLen is a conservative bound on a Unix-domain socket path; see
 // fitsSocketPath.
 const maxSocketPathLen = 90
@@ -184,6 +175,9 @@ func IsDataDirInitialized(version string) (bool, error) {
 // InitDB initializes a version's data directory. It is a no-op if the data
 // directory is already initialized.
 func InitDB(version string) error {
+	if err := ensureDataDirMigrated(version); err != nil {
+		return err
+	}
 	if initialized, err := IsDataDirInitialized(version); err != nil {
 		return err
 	} else if initialized {
@@ -256,6 +250,9 @@ func ensurePostgresSuperuser(version, dataDir string) error {
 // StartServer starts a version's PostgreSQL server on the given port. The
 // data directory must already be initialized via InitDB.
 func StartServer(version string, port int) error {
+	if err := ensureDataDirMigrated(version); err != nil {
+		return err
+	}
 	if initialized, err := IsDataDirInitialized(version); err != nil {
 		return err
 	} else if !initialized {
@@ -270,6 +267,17 @@ func StartServer(version string, port int) error {
 	dataDir, err := DataDir(version)
 	if err != nil {
 		return err
+	}
+
+	// Every release of a major version shares one data directory, so a
+	// server another release started may already be using it.
+	if running, _, err := serverStatusAt(pgCtl, dataDir); err != nil {
+		return err
+	} else if running {
+		if owner := runningRelease(dataDir); owner != "" && owner != version {
+			return fmt.Errorf("the PostgreSQL %s data directory is in use by the PostgreSQL %s server; stop it first", MajorVersion(version), owner)
+		}
+		return fmt.Errorf("PostgreSQL %s is already running", version)
 	}
 
 	logFile, err := LogFile(version)
@@ -359,7 +367,10 @@ func TailLog(version string, n int) (string, error) {
 
 var statusPIDRe = regexp.MustCompile(`\(PID:\s*(\d+)\)`)
 
-// ServerStatus reports whether a version's server is running and, if so, its PID.
+// ServerStatus reports whether a version's server is running and, if so, its
+// PID. Every release of a major version shares one data directory, so a
+// server that another release of the same major version started does not
+// count as this version's server.
 func ServerStatus(version string) (running bool, pid int, err error) {
 	if initialized, ierr := IsDataDirInitialized(version); ierr != nil {
 		return false, 0, ierr
@@ -377,6 +388,18 @@ func ServerStatus(version string) (running bool, pid int, err error) {
 		return false, 0, err
 	}
 
+	running, pid, err = serverStatusAt(pgCtl, dataDir)
+	if err != nil || !running {
+		return false, 0, err
+	}
+	if owner := runningRelease(dataDir); owner != "" && owner != version {
+		return false, 0, nil
+	}
+	return true, pid, nil
+}
+
+// serverStatusAt asks pgCtl whether a server is running against dataDir.
+func serverStatusAt(pgCtl, dataDir string) (running bool, pid int, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -385,7 +408,7 @@ func ServerStatus(version string) (running bool, pid int, err error) {
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		exitCode = exitErr.ExitCode()
 	} else if err != nil {
-		return false, 0, fmt.Errorf("checking status of %s: %w\n%s", version, err, out)
+		return false, 0, fmt.Errorf("checking status of %s: %w\n%s", dataDir, err, out)
 	}
 
 	switch exitCode {
@@ -397,8 +420,38 @@ func ServerStatus(version string) (running bool, pid int, err error) {
 	case 3:
 		return false, 0, nil
 	default:
-		return false, 0, fmt.Errorf("could not determine status of %s: %s", version, out)
+		return false, 0, fmt.Errorf("could not determine status of %s: %s", dataDir, out)
 	}
+}
+
+// runningRelease returns the installed release whose postgres binary
+// started the server running against dataDir, read from postmaster.opts
+// (which postgres writes on startup, beginning with its own binary path).
+// It returns "" if that can't be determined.
+func runningRelease(dataDir string) string {
+	data, err := os.ReadFile(filepath.Join(dataDir, "postmaster.opts"))
+	if err != nil {
+		return ""
+	}
+	versionsDir, err := VersionsDir()
+	if err != nil {
+		return ""
+	}
+
+	opts := filepath.ToSlash(strings.TrimPrefix(strings.TrimSpace(string(data)), `"`))
+	prefix := filepath.ToSlash(versionsDir) + "/"
+	if runtime.GOOS == "windows" {
+		opts, prefix = strings.ToLower(opts), strings.ToLower(prefix)
+	}
+	rest, ok := strings.CutPrefix(opts, prefix)
+	if !ok {
+		return ""
+	}
+	release, _, ok := strings.Cut(rest, "/")
+	if !ok {
+		return ""
+	}
+	return release
 }
 
 // RunningPort returns the port a version's running server is actually

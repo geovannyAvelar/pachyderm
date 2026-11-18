@@ -19,9 +19,13 @@ Installed versions live under `~/.pachyderm/versions/<version>/`, and `~/.pachyd
 │   ├── 16.14.0/
 │   └── 15.18.0/
 ├── current -> versions/16.14.0
-├── data/<version>/     # PostgreSQL data directories (created by `initdb` / the app)
+├── data/<major>/       # PostgreSQL data directories, one per major version (created by `initdb` / the app)
 └── logs/<version>.log  # server logs
 ```
+
+Every release of a major version shares one data directory: `16.14.0` and `16.15.0` both use `data/16`, because PostgreSQL keeps the same on-disk format within a major version. So moving to a newer minor release keeps your databases — stop the server, then start it again with the new release. A different major version (e.g. `17`) has its own data directory; moving data between majors still needs `pg_dump`/`pg_restore` or `pg_upgrade`.
+
+Releases before 0.0.21 kept one data directory per release (`data/16.14.0`). Pachyderm moves such a directory to `data/16` automatically the first time it runs. It never overwrites or deletes data to do so: if the server is still running from the old directory, or a major version has more than one old directory, it prints what to do and leaves them as they are.
 
 Add `~/.pachyderm/current/bin` to your `PATH` once, and switching the active version (via `get`/`use`, or the app) instantly changes what `psql`, `pg_ctl`, etc. resolve to — no need to touch your shell config again.
 
@@ -93,7 +97,7 @@ pachyderm get 16.10     # latest build of PostgreSQL 16.10
 pachyderm get 16.14.0   # an exact release
 ```
 
-This resolves the version against real published releases, downloads the right binary for your OS/architecture, extracts it into `~/.pachyderm/versions/<resolved-version>/`, and points `~/.pachyderm/current` at it.
+This resolves the version against real published releases, downloads the right binary for your OS/architecture, checks it against the SHA-256 checksum published with it, extracts it into `~/.pachyderm/versions/<resolved-version>/`, and points `~/.pachyderm/current` at it. The archive is extracted into a temporary directory first and only moved into place once it's complete, so an interrupted download never leaves a half-installed version behind.
 
 ### `pachyderm use <version>`
 
@@ -110,6 +114,8 @@ Remove an installed version:
 ```bash
 pachyderm uninstall 15.18.0
 ```
+
+Stop its server first; `uninstall` refuses to remove a version whose server is running. The data directory is kept, since other releases of the same major version use it too.
 
 ### `pachyderm logs <version>`
 

@@ -2,10 +2,8 @@ package postgres
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -91,7 +89,8 @@ func ListInstalled() ([]string, error) {
 
 	var versions []string
 	for _, e := range entries {
-		if e.IsDir() {
+		// Skip the temporary entries an install in progress creates.
+		if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
 			versions = append(versions, e.Name())
 		}
 	}
@@ -99,8 +98,13 @@ func ListInstalled() ([]string, error) {
 	return versions, nil
 }
 
-// Install downloads and extracts the release tag/target into its install directory.
-// It is a no-op if the version is already installed.
+// Install downloads the release tag/target, checks it against the SHA-256
+// checksum published next to it, and extracts it into its install
+// directory. It is a no-op if the version is already installed.
+//
+// The archive is extracted into a staging directory first and renamed into
+// place only once it is complete, so an interrupted install never leaves a
+// partial version that IsInstalled would report as installed.
 func Install(tag, target string) error {
 	if installed, err := IsInstalled(tag); err != nil {
 		return err
@@ -112,27 +116,46 @@ func Install(tag, target string) error {
 	if err != nil {
 		return err
 	}
+	versionsDir := filepath.Dir(dir)
+	if err := os.MkdirAll(versionsDir, 0o755); err != nil {
+		return err
+	}
+	cleanStaleTemp(versionsDir)
 
 	url := AssetURL(tag, target)
-	resp, err := http.Get(url)
+	want, err := fetchSHA256File(url + ".sha256")
 	if err != nil {
-		return fmt.Errorf("downloading %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("downloading %s: unexpected status %s", url, resp.Status)
+		return fmt.Errorf("fetching checksum: %w", err)
 	}
 
-	gz, err := gzip.NewReader(resp.Body)
+	archive, err := downloadVerified(url, versionsDir, want)
 	if err != nil {
-		return fmt.Errorf("reading archive: %w", err)
+		return err
 	}
-	defer gz.Close()
+	defer os.Remove(archive.Name())
+	defer archive.Close()
 
-	if err := extractTar(gz, dir); err != nil {
-		os.RemoveAll(dir)
-		return fmt.Errorf("extracting archive: %w", err)
+	staging, err := os.MkdirTemp(versionsDir, stagingTempPrefix+tag+"-")
+	if err != nil {
+		return err
+	}
+	if err := extractTarGz(archive, staging); err != nil {
+		os.RemoveAll(staging)
+		return err
+	}
+	// MkdirTemp creates the directory 0700; match the 0755 of a normal one.
+	if err := os.Chmod(staging, 0o755); err != nil {
+		os.RemoveAll(staging)
+		return err
+	}
+
+	if err := os.Rename(staging, dir); err != nil {
+		os.RemoveAll(staging)
+		// Another process may have installed the same version meanwhile.
+		if installed, ierr := IsInstalled(tag); ierr == nil && installed {
+			return nil
+		}
+		return fmt.Errorf("installing %s: %w", tag, err)
 	}
 
 	return nil
@@ -251,7 +274,9 @@ func CurrentVersion() (string, error) {
 }
 
 // Uninstall removes an installed version, clearing the "current" link if
-// it pointed there.
+// it pointed there. It refuses to remove a version whose server is running.
+// The data directory is kept: other releases of the same major version use
+// it too.
 func Uninstall(version string) error {
 	installed, err := IsInstalled(version)
 	if err != nil {
@@ -259,6 +284,20 @@ func Uninstall(version string) error {
 	}
 	if !installed {
 		return fmt.Errorf("version %s is not installed", version)
+	}
+
+	// A version with no pg_ctl (e.g. a damaged install) can't report its
+	// status, and should still be removable.
+	if pgCtl, err := binPath(version, "pg_ctl"); err == nil {
+		if _, err := os.Stat(pgCtl); err == nil {
+			running, _, err := ServerStatus(version)
+			if err != nil {
+				return err
+			}
+			if running {
+				return fmt.Errorf("stop the PostgreSQL %s server before uninstalling it", version)
+			}
+		}
 	}
 
 	current, err := CurrentVersion()

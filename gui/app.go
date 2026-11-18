@@ -17,6 +17,10 @@ const logLines = 200
 type App struct {
 	ctx context.Context
 	mu  sync.Mutex
+
+	// startupNotices are messages from startup that are shown in the
+	// frontend's log once it has loaded.
+	startupNotices []string
 }
 
 func NewApp() *App {
@@ -25,7 +29,24 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	// Move data directories that older releases kept per release (e.g.
+	// data/16.14.0) to one per major version (data/16), before the
+	// frontend can ask about them.
+	notices, err := postgres.MigrateLegacyDataDirs()
+	a.startupNotices = notices
+	if err != nil {
+		a.startupNotices = append(a.startupNotices, fmt.Sprintf("Could not migrate data directories: %v", err))
+	}
+
 	a.startTray()
+}
+
+func (a *App) domReady(ctx context.Context) {
+	for _, notice := range a.startupNotices {
+		a.emit(notice)
+	}
+	a.startupNotices = nil
 }
 
 func (a *App) emit(message string) {

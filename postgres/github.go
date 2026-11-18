@@ -14,7 +14,13 @@ import (
 const releasesRepo = "theseus-rs/postgresql-binaries"
 
 type ghRelease struct {
-	TagName string `json:"tag_name"`
+	TagName string    `json:"tag_name"`
+	Assets  []ghAsset `json:"assets"`
+}
+
+type ghAsset struct {
+	Name   string `json:"name"`
+	Digest string `json:"digest"`
 }
 
 var linkNextRe = regexp.MustCompile(`<([^>]+)>;\s*rel="next"`)
@@ -26,10 +32,23 @@ func FetchReleaseTags() ([]string, error) {
 
 // fetchReleaseTags returns every release tag published in repo, newest first.
 func fetchReleaseTags(repo string) ([]string, error) {
-	var tags []string
+	releases, err := fetchReleases(repo)
+	if err != nil {
+		return nil, err
+	}
+	tags := make([]string, len(releases))
+	for i, r := range releases {
+		tags[i] = r.TagName
+	}
+	return tags, nil
+}
+
+// fetchReleases returns every release published in repo, newest first.
+func fetchReleases(repo string) ([]ghRelease, error) {
+	var all []ghRelease
 
 	client := &http.Client{}
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=100", repo)
+	url := fmt.Sprintf("%s/repos/%s/releases?per_page=100", githubAPIBase, repo)
 
 	for page := 0; url != "" && page < 30; page++ {
 		req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -59,14 +78,11 @@ func fetchReleaseTags(repo string) ([]string, error) {
 			return nil, fmt.Errorf("listing releases: %w", err)
 		}
 
-		for _, r := range releases {
-			tags = append(tags, r.TagName)
-		}
-
+		all = append(all, releases...)
 		url = next
 	}
 
-	return tags, nil
+	return all, nil
 }
 
 func nextPageURL(linkHeader string) string {
@@ -145,7 +161,7 @@ func compareParts(a, b []int) int {
 // AssetURL builds the download URL for a release tag and target triple.
 func AssetURL(tag, target string) string {
 	return fmt.Sprintf(
-		"https://github.com/%s/releases/download/%s/postgresql-%s-%s.tar.gz",
-		releasesRepo, tag, tag, target,
+		"%s/%s/releases/download/%s/postgresql-%s-%s.tar.gz",
+		githubDownloadBase, releasesRepo, tag, tag, target,
 	)
 }

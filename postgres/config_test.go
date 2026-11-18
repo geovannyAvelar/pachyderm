@@ -55,3 +55,19 @@ func TestSetPortRejectsOutOfRange(t *testing.T) {
 		}
 	}
 }
+
+func TestSetPortIsSharedAcrossMinorReleases(t *testing.T) {
+	withTempHome(t)
+
+	if err := SetPort("16.14.0", 5433); err != nil {
+		t.Fatalf("SetPort: %v", err)
+	}
+
+	port, err := GetPort("16.16.0")
+	if err != nil {
+		t.Fatalf("GetPort: %v", err)
+	}
+	if port != 5433 {
+		t.Fatalf("GetPort(16.16.0) = %d, want 5433 (same major version as 16.14.0)", port)
+	}
+}

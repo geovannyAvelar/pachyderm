@@ -1,9 +1,9 @@
 package postgres
 
 import (
-	"compress/gzip"
 	"fmt"
-	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -47,18 +47,45 @@ func SelectPostGISTag(tags []string, version string) (string, error) {
 // PostgreSQL major version (e.g. "17"), and target triple.
 func PostGISAssetURL(tag, pgMajor, target string) string {
 	return fmt.Sprintf(
-		"https://github.com/%s/releases/download/%s/postgis-%s-pg%s-%s.tar.gz",
-		postgisBinariesRepo, tag, strings.TrimPrefix(tag, "v"), pgMajor, target,
+		"%s/%s/releases/download/%s/%s",
+		githubDownloadBase, postgisBinariesRepo, tag, postGISAssetName(tag, pgMajor, target),
 	)
 }
 
+func postGISAssetName(tag, pgMajor, target string) string {
+	return fmt.Sprintf("postgis-%s-pg%s-%s.tar.gz", strings.TrimPrefix(tag, "v"), pgMajor, target)
+}
+
+// postGISAssetSHA256 returns the expected SHA-256 digest of a release's
+// asset: the digest GitHub computes for every uploaded asset, or else a
+// "<asset>.sha256" file published next to it.
+func postGISAssetSHA256(release ghRelease, assetName, assetURL string) (string, error) {
+	hasChecksumFile := false
+	for _, a := range release.Assets {
+		if a.Name == assetName && a.Digest != "" {
+			return parseGitHubDigest(a.Digest)
+		}
+		if a.Name == assetName+".sha256" {
+			hasChecksumFile = true
+		}
+	}
+	if hasChecksumFile {
+		return fetchSHA256File(assetURL + ".sha256")
+	}
+	return "", fmt.Errorf("no checksum published for %s", assetName)
+}
+
 // InstallPostGISBinary downloads a prebuilt PostGIS archive matching
-// postgisVersion and overlays it onto an already-installed PostgreSQL
-// version's directory, so the extension becomes visible to ListExtensions
-// and installable via InstallExtension. pgVersion must already be
-// installed (see IsInstalled) and is expected to be a full theseus-rs
-// release tag (e.g. "17.11.0"), from which the PostgreSQL major version is
-// derived.
+// postgisVersion, checks it against its published SHA-256 checksum, and
+// overlays it onto an already-installed PostgreSQL version's directory, so
+// the extension becomes visible to ListExtensions and installable via
+// InstallExtension. pgVersion must already be installed (see IsInstalled)
+// and is expected to be a full theseus-rs release tag (e.g. "17.11.0"),
+// from which the PostgreSQL major version is derived.
+//
+// The archive is verified and extracted into a staging directory before
+// anything is moved into the PostgreSQL install, so a failed or corrupted
+// download leaves that install as it was.
 func InstallPostGISBinary(pgVersion, postgisVersion string) error {
 	installed, err := IsInstalled(pgVersion)
 	if err != nil {
@@ -78,9 +105,13 @@ func InstallPostGISBinary(pgVersion, postgisVersion string) error {
 		return err
 	}
 
-	tags, err := FetchPostGISReleaseTags()
+	releases, err := fetchReleases(postgisBinariesRepo)
 	if err != nil {
 		return err
+	}
+	tags := make([]string, len(releases))
+	for i, r := range releases {
+		tags[i] = r.TagName
 	}
 
 	tag, err := SelectPostGISTag(tags, postgisVersion)
@@ -88,33 +119,57 @@ func InstallPostGISBinary(pgVersion, postgisVersion string) error {
 		return err
 	}
 
+	var release ghRelease
+	for _, r := range releases {
+		if r.TagName == tag {
+			release = r
+			break
+		}
+	}
+
+	assetName := postGISAssetName(tag, pgMajor, target)
+	found = false
+	for _, a := range release.Assets {
+		if a.Name == assetName {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("no PostGIS %s binaries published for PostgreSQL %s (%s)", tag, pgMajor, target)
+	}
+
+	url := PostGISAssetURL(tag, pgMajor, target)
+	want, err := postGISAssetSHA256(release, assetName, url)
+	if err != nil {
+		return fmt.Errorf("fetching checksum: %w", err)
+	}
+
 	dir, err := InstallDir(pgVersion)
 	if err != nil {
 		return err
 	}
+	versionsDir := filepath.Dir(dir)
+	cleanStaleTemp(versionsDir)
 
-	url := PostGISAssetURL(tag, pgMajor, target)
-	resp, err := http.Get(url)
+	archive, err := downloadVerified(url, versionsDir, want)
 	if err != nil {
-		return fmt.Errorf("downloading %s: %w", url, err)
+		return err
 	}
-	defer resp.Body.Close()
+	defer os.Remove(archive.Name())
+	defer archive.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("no PostGIS %s binaries published for PostgreSQL %s (%s)", tag, pgMajor, target)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("downloading %s: unexpected status %s", url, resp.Status)
-	}
-
-	gz, err := gzip.NewReader(resp.Body)
+	staging, err := os.MkdirTemp(versionsDir, stagingTempPrefix+"postgis-")
 	if err != nil {
-		return fmt.Errorf("reading archive: %w", err)
+		return err
 	}
-	defer gz.Close()
+	defer os.RemoveAll(staging)
 
-	if err := extractTar(gz, dir); err != nil {
-		return fmt.Errorf("extracting archive: %w", err)
+	if err := extractTarGz(archive, staging); err != nil {
+		return err
+	}
+	if err := mergeDir(staging, dir); err != nil {
+		return fmt.Errorf("installing PostGIS into PostgreSQL %s: %w", pgVersion, err)
 	}
 
 	return nil
